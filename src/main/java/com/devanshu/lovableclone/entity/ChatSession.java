@@ -20,12 +20,12 @@ public class ChatSession extends CommonModel {
     private static final long serialVersionUID = -6253140643260841031L;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    User user;
+    @JoinColumn(name = "users_id", nullable = false)
+    Users users;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = false)
-    Project project;
+    @JoinColumn(name = "projects_id", nullable = false)
+    Projects projects;
 
     @Column(name = "terminated_at")
     Instant terminatedAt;

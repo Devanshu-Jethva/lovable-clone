@@ -21,12 +21,12 @@ public class UsageLog extends CommonModel {
     Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    User user;
+    @JoinColumn(name = "users_id")
+    Users users;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
-    Project project;
+    @JoinColumn(name = "projects_id")
+    Projects projects;
 
     @Column(name = "action", nullable = false)
     String action;

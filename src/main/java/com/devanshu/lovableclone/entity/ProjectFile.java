@@ -23,8 +23,8 @@ public class ProjectFile extends CommonModel {
     Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = false)
-    Project project;
+    @JoinColumn(name = "projects_id", nullable = false)
+    Projects projects;
 
     @Column(name = "path", nullable = false)
     String path;
@@ -34,9 +34,9 @@ public class ProjectFile extends CommonModel {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
-    User createdBy;
+    Users createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by", nullable = false)
-    User updatedBy;
+    Users updatedBy;
 }

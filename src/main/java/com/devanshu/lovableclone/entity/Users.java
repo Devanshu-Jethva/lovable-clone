@@ -11,13 +11,13 @@ import java.time.Instant;
 
 @Data
 @Entity
-@Table(name = "project")
+@Table(name = "users")
 @EqualsAndHashCode(callSuper = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Project extends CommonModel {
+public class Users extends CommonModel {
 
     @Serial
-    private static final long serialVersionUID = -6104905132933799694L;
+    private static final long serialVersionUID = -2264536331038896888L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,15 +26,14 @@ public class Project extends CommonModel {
     @Column(name = "name", nullable = false)
     String name;
 
-    @Column(name = "description")
-    String description;
+    @Column(name = "email", unique = true, nullable = false)
+    String email;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", nullable = false)
-    User owner;
+    @Column(name = "password", nullable = false)
+    String password;
 
-    @Column(name = "is_public", nullable = false)
-    Boolean isPublic = false;
+    @Column(name = "avatar_url")
+    String avatarUrl;
 
     @Column(name = "deleted_at")
     Instant deletedAt;

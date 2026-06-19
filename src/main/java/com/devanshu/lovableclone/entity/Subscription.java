@@ -25,8 +25,8 @@ public class Subscription extends CommonModel {
     Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    User user;
+    @JoinColumn(name = "users_id", nullable = false)
+    Users users;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "plan_id", nullable = false)

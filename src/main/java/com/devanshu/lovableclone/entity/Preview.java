@@ -21,8 +21,8 @@ public class Preview extends CommonModel {
     private static final long serialVersionUID = 3288748332619495494L;
 
     @ManyToOne
-    @JoinColumn(name = "project_id")
-    Project project;
+    @JoinColumn(name = "projects_id")
+    Projects projects;
 
     @Column(name = "namespace", nullable = false)
     String namespace;
