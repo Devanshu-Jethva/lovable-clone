@@ -23,15 +23,28 @@ public class ProjectMemberController {
 
     @PostMapping("/invite")
     public ResponseEntity<Object> inviteProjectMember(@PathVariable Long projectId, @RequestBody InviteProjectMemberRequestDTO inviteProjectMemberRequestDTO) {
-        projectMemberService.inviteProjectMember(projectId, inviteProjectMemberRequestDTO);
-        return GenericResponseHandler.builder().message("Project member invited successfully").status(HttpStatus.OK)
+        ProjectMemberDTO projectMemberDTO = projectMemberService.inviteProjectMember(projectId, inviteProjectMemberRequestDTO);
+        return GenericResponseHandler.builder()
+                                     .data(projectMemberDTO).message("Project member invited successfully")
+                                     .status(HttpStatus.OK)
                                      .build();
     }
 
-    @PatchMapping("/{id}")
-    public ResponseEntity<Object> updateProjectMemberRole(@PathVariable Long projectId, @PathVariable Long id, @RequestParam String projectRole) {
-        projectMemberService.updateProjectMemberRole(projectId, id, projectRole);
-        return GenericResponseHandler.builder().message("Project member role updated successfully")
+    @PostMapping("/accept-reject")
+    public ResponseEntity<Object> acceptRejectInviteProjectMember(@PathVariable Long projectId, @RequestParam String status) {
+        projectMemberService.acceptRejectInviteProjectMember(projectId, status);
+        return GenericResponseHandler.builder()
+                                     .message("Project member invitation accepted successfully")
+                                     .status(HttpStatus.NO_CONTENT)
+                                     .build();
+    }
+
+    @PatchMapping("/{projectMemberId}")
+    public ResponseEntity<Object> updateProjectMemberRole(@PathVariable Long projectId, @PathVariable Long projectMemberId, @RequestParam String projectRole) {
+        ProjectMemberDTO projectMemberDTO = projectMemberService.updateProjectMemberRole(projectId, projectMemberId, projectRole);
+        return GenericResponseHandler.builder()
+                                     .data(projectMemberDTO)
+                                     .message("Project member role updated successfully")
                                      .status(HttpStatus.OK)
                                      .build();
     }
@@ -46,10 +59,11 @@ public class ProjectMemberController {
                                      .build();
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Object> deleteProjectMember(@PathVariable Long projectId, @PathVariable Long id) {
-        projectMemberService.deleteProjectMember(projectId, id);
-        return GenericResponseHandler.builder().message("Project member deleted successfully").status(HttpStatus.OK)
+    @DeleteMapping("/{projectMemberId}")
+    public ResponseEntity<Object> deleteProjectMember(@PathVariable Long projectId, @PathVariable Long projectMemberId) {
+        projectMemberService.deleteProjectMember(projectId, projectMemberId);
+        return GenericResponseHandler.builder().message("Project member deleted successfully")
+                                     .status(HttpStatus.NO_CONTENT)
                                      .build();
     }
 }

@@ -9,18 +9,20 @@ import com.devanshu.lovableclone.mapper.ProjectsMapper;
 import com.devanshu.lovableclone.repository.ProjectsRepository;
 import com.devanshu.lovableclone.repository.UsersRepository;
 import com.devanshu.lovableclone.service.ProjectsService;
-import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-@Transactional(rollbackOn = Throwable.class)
+@Transactional(rollbackFor = Throwable.class)
 public class ProjectsServiceImpl implements ProjectsService {
 
     ProjectsRepository projectsRepository;
@@ -32,7 +34,7 @@ public class ProjectsServiceImpl implements ProjectsService {
         Users users = usersRepository.findById(1L).get();// TODO
 
         Projects projects = Projects.builder()
-                                    .owners(users)
+                                    .owner(users)
                                     .name(projectRequestDTO.name())
                                     .description(projectRequestDTO.description())
                                     .build();
@@ -48,17 +50,47 @@ public class ProjectsServiceImpl implements ProjectsService {
 
     @Override
     public ProjectDetailDTO getProjectById(Long id) {
-        Projects projects = projectsRepository.findById(id).orElseThrow();
+        Users users = new Users(); // TODO: user from security context
+        Projects projects = getProject(id);
+        if (!Objects.equals(projects.getOwner().getId(), users.getId())) {
+            throw new RuntimeException("User is not the owner of the project");
+        }
         return projectsMapper.toDetailDto(projects);
     }
 
     @Override
     public ProjectDetailDTO updateProject(ProjectRequestDTO projectRequestDTO) {
-        return null;
+        Users users = new Users(); // TODO: user from security context
+        Projects projects = getProject(projectRequestDTO.id());
+        if (projects.getDeletedAt() != null) {
+            throw new RuntimeException("Project is deleted and cannot be updated");
+        }
+        if (!Objects.equals(projects.getOwner().getId(), users.getId())) {
+            throw new RuntimeException("User is not the owner of the project");
+        }
+        projects.setName(projectRequestDTO.name());
+        projects.setDescription(projectRequestDTO.description());
+        projects = projectsRepository.save(projects);
+        return projectsMapper.toDetailDto(projects);
     }
 
     @Override
     public void deleteProject(Long id) {
-        
+        Users users = new Users(); // TODO: user from security context
+        Projects projects = getProject(id);
+        if (!Objects.equals(projects.getOwner().getId(), users.getId())) {
+            throw new RuntimeException("User is not the owner of the project");
+        }
+        if (projects.getDeletedAt() != null) {
+            throw new RuntimeException("Project is deleted and cannot be updated");
+        }
+        projects.setDeletedAt(Instant.now());
+        projectsRepository.save(projects);
     }
+
+    private Projects getProject(Long id) {
+        return projectsRepository.findById(id)
+                                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + id));
+    }
+
 }

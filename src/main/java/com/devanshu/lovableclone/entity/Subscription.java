@@ -2,16 +2,16 @@ package com.devanshu.lovableclone.entity;
 
 import com.devanshu.lovableclone.constant.SubscriptionStatus;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.io.Serial;
 import java.time.Instant;
 
-@Data
-@EqualsAndHashCode(callSuper = true)
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 @Table(name = "subscription")
 @FieldDefaults(level = AccessLevel.PRIVATE)

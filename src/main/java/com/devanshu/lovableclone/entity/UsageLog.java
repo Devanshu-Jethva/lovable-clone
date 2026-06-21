@@ -1,23 +1,25 @@
 package com.devanshu.lovableclone.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.io.Serial;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "usage_log")
-@EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
+@NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UsageLog extends CommonModel {
 
     @Serial
     private static final long serialVersionUID = 8611822990292863030L;
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)

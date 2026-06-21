@@ -2,17 +2,17 @@ package com.devanshu.lovableclone.entity;
 
 import com.devanshu.lovableclone.constant.MessageRole;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.io.Serial;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "chat_session")
-@EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
+@NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ChatMessage extends CommonModel {
 

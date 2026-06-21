@@ -3,7 +3,8 @@ package com.devanshu.lovableclone.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import lombok.AccessLevel;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -12,7 +13,8 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 
-@Data
+@Getter
+@Setter
 @MappedSuperclass
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CommonModel implements Serializable {

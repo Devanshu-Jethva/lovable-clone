@@ -2,18 +2,18 @@ package com.devanshu.lovableclone.entity;
 
 import com.devanshu.lovableclone.constant.PreviewStatus;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.io.Serial;
 import java.time.Instant;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "preview")
-@EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
+@NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Preview extends CommonModel {
 

@@ -1,20 +1,19 @@
 package com.devanshu.lovableclone.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.io.Serial;
 import java.time.Instant;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "projects")
 @Builder
-@EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
+@NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Projects extends CommonModel {
 
@@ -33,7 +32,7 @@ public class Projects extends CommonModel {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
-    Users owners;
+    Users owner;
 
     @Builder.Default
     @Column(name = "is_public", nullable = false)

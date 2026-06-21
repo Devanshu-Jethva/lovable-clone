@@ -6,12 +6,14 @@ import com.devanshu.lovableclone.dto.projects.member.ProjectMemberDTO;
 import java.util.List;
 
 public interface ProjectMemberService {
-    
+
     List<ProjectMemberDTO> getProjectMembers(Long projectId);
 
-    void inviteProjectMember(Long projectId, InviteProjectMemberRequestDTO inviteProjectMemberRequestDTO);
+    ProjectMemberDTO inviteProjectMember(Long projectId, InviteProjectMemberRequestDTO inviteProjectMemberRequestDTO);
 
-    void updateProjectMemberRole(Long projectId, Long id, String projectRole);
+    ProjectMemberDTO updateProjectMemberRole(Long projectId, Long projectMemberId, String projectRole);
 
-    void deleteProjectMember(Long projectId, Long id);
+    void deleteProjectMember(Long projectId, Long projectMemberId);
+
+    void acceptRejectInviteProjectMember(Long projectId, String status);
 }
