@@ -5,5 +5,5 @@ import com.devanshu.lovableclone.entity.Users;
 public interface HelperService {
     Users getUser(Long id);
 
-    Users getUserByEmail(String email);
+    Users getUserByUsername(String username);
 }

@@ -26,14 +26,11 @@ public class Users extends CommonModel {
     @Column(name = "name", nullable = false)
     String name;
 
-    @Column(name = "email", unique = true, nullable = false)
-    String email;
+    @Column(name = "username", unique = true, nullable = false)
+    String username;
 
     @Column(name = "password", nullable = false)
     String password;
-
-    @Column(name = "avatar_url")
-    String avatarUrl;
 
     @Column(name = "deleted_at")
     Instant deletedAt;

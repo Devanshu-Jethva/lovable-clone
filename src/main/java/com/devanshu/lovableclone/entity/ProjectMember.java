@@ -43,6 +43,6 @@ public class ProjectMember extends CommonModel {
     Instant invitedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "accepted_at")
+    @Column(name = "accepted_at", nullable = false)
     ProjectMemberStatus status;
 }

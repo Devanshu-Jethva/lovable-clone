@@ -20,7 +20,7 @@ public class HelperServiceImpl implements HelperService {
     }
 
     @Override
-    public Users getUserByEmail(String email) {
-        return usersRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+    public Users getUserByUsername(String email) {
+        return usersRepository.findByUsername(email).orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

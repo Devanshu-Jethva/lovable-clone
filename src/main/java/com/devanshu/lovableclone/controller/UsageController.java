@@ -1,10 +1,9 @@
 package com.devanshu.lovableclone.controller;
 
-import com.devanshu.lovableclone.dto.GenericResponseHandler;
+import com.devanshu.lovableclone.dto.ApiResponse;
 import com.devanshu.lovableclone.dto.usage.TodayUsageResponseDTO;
 import com.devanshu.lovableclone.service.UsageService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,8 +19,10 @@ public class UsageController {
     @GetMapping("/today")
     public ResponseEntity<Object> getTodayUsage() {
         TodayUsageResponseDTO todayUsageResponseDTO = usageService.getTodayUsage();
-        return GenericResponseHandler.builder().status(HttpStatus.OK).message("Today usage retrieved successfully")
-                                     .data(todayUsageResponseDTO).build();
+        return ResponseEntity.ok(ApiResponse.<TodayUsageResponseDTO>builder()
+                                            .message("Today usage retrieved successfully")
+                                            .data(todayUsageResponseDTO)
+                                            .build());
     }
 
 }

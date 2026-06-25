@@ -13,11 +13,12 @@ public interface ProjectMemberMapper {
 
     @Mapping(target = "userId", source = "id")
     @Mapping(target = "projectRole", constant = "OWNER")
+    @Mapping(target = "invitedAt", ignore = true)
     ProjectMemberDTO toDto(Users owner);
 
     @Mapping(target = "userId", source = "users.id")
     @Mapping(target = "name", source = "users.name")
-    @Mapping(target = "email", source = "users.email")
+    @Mapping(target = "username", source = "users.username")
     ProjectMemberDTO toDto(ProjectMember projectMember);
 
     List<ProjectMemberDTO> toDtos(List<ProjectMember> projectMembers);

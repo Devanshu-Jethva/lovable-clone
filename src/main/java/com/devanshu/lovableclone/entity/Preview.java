@@ -20,6 +20,10 @@ public class Preview extends CommonModel {
     @Serial
     private static final long serialVersionUID = 3288748332619495494L;
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    Long id;
+
     @ManyToOne
     @JoinColumn(name = "projects_id")
     Projects projects;

@@ -1,4 +1,9 @@
 package com.devanshu.lovableclone.dto.projects;
 
-public record ProjectRequestDTO(Long id, String name, String description) {
+import jakarta.validation.constraints.NotBlank;
+
+public record ProjectRequestDTO(
+        Long id,
+        @NotBlank(message = "Name is required") String name,
+        String description) {
 }
