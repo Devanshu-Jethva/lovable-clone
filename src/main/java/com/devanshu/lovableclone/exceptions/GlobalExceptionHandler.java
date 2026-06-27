@@ -15,27 +15,11 @@ import java.util.List;
 public class GlobalExceptionHandler {
 
     /**
-     * Catch-all for unexpected exceptions
-     */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleUnexpected(Throwable ex, HttpServletRequest request) {
-
-        log.error("Unexpected error occurred: {}", request.getRequestURL(), ex);
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponse.of(
-                "INTERNAL_SERVER_ERROR",
-                "An unexpected error occurred. Please try again later."
-        ));
-    }
-
-    /**
      * ONE handler for all BaseException and its subclasses
-     * This replaces your old massive if-else block
      */
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<ErrorResponse> handleBaseException(BaseException ex, HttpServletRequest request) {
         log.error("BaseException error occurred: {}", request.getRequestURL(), ex);
-
         return ResponseEntity.status(ex.getStatus())
                              .body(ErrorResponse.of(ex.getErrorCode(), ex.getMessage()));
     }
@@ -58,4 +42,14 @@ public class GlobalExceptionHandler {
                              .body(ErrorResponse.of("VALIDATION_ERROR", "Request validation failed", fieldErrors));
     }
 
+    /**
+     * Catch-all for unexpected exceptions
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleUnexpected(Throwable ex, HttpServletRequest request) {
+        log.error("Unexpected error occurred: {}", request.getRequestURL(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                             .body(ErrorResponse.of("INTERNAL_SERVER_ERROR",
+                                     "An unexpected error occurred. Please try again later."));
+    }
 }

@@ -16,6 +16,8 @@ import com.devanshu.lovableclone.mapper.ProjectsMapper;
 import com.devanshu.lovableclone.repository.ProjectMemberRepository;
 import com.devanshu.lovableclone.repository.ProjectsRepository;
 import com.devanshu.lovableclone.repository.UsersRepository;
+import com.devanshu.lovableclone.security.JwtUserPrincipal;
+import com.devanshu.lovableclone.service.HelperService;
 import com.devanshu.lovableclone.service.ProjectMemberService;
 import com.devanshu.lovableclone.service.ProjectsService;
 import lombok.AccessLevel;
@@ -39,10 +41,12 @@ public class ProjectsServiceImpl implements ProjectsService {
     ProjectsMapper projectsMapper;
     ProjectMemberRepository projectMemberRepository;
     ProjectMemberService projectMemberService;
+    HelperService helperService;
 
     @Override
     public ProjectDetailDTO createProject(ProjectRequestDTO projectRequestDTO) {
-        Users users = usersRepository.findById(1L).get();// TODO
+        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
+        Users users = usersRepository.getReferenceById(jwtUserPrincipal.id());
 
         Projects projects = Projects.builder()
                                     .name(projectRequestDTO.name())
@@ -51,7 +55,7 @@ public class ProjectsServiceImpl implements ProjectsService {
         projects = projectsRepository.save(projects);
 
         ProjectMember projectMember = ProjectMember.builder()
-                                                   .id(new ProjectMemberId(users.getId(), projects.getId()))
+                                                   .id(new ProjectMemberId(jwtUserPrincipal.id(), projects.getId()))
                                                    .projects(projects)
                                                    .users(users)
                                                    .projectRole(ProjectRole.OWNER)
@@ -64,17 +68,17 @@ public class ProjectsServiceImpl implements ProjectsService {
 
     @Override
     public List<ProjectListDTO> getAllProjects() {
-        Users users = usersRepository.findById(1L).get();// TODO
-        List<Projects> projects = projectsRepository.getAllAccessibleProjects(users.getId());
+        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
+        List<Projects> projects = projectsRepository.getAllAccessibleProjects(jwtUserPrincipal.id());
         return projectsMapper.toProjectListDTOs(projects);
     }
 
     @Override
     public ProjectDetailDTO getProjectById(Long id) {
-        Users users = usersRepository.findById(1L).get();// TODO: user from security context
+        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
         Projects projects = getProject(id);
         ProjectMember projectOwner = projectMemberService.getProjectOwner(projects);
-        if (!Objects.equals(projectOwner.getUsers().getId(), users.getId())) {
+        if (!Objects.equals(projectOwner.getUsers().getId(), jwtUserPrincipal.id())) {
             throw new PermissionException("User is not the owner of the project");
         }
         return projectsMapper.toDetailDto(projects);
@@ -85,13 +89,13 @@ public class ProjectsServiceImpl implements ProjectsService {
         if (projectRequestDTO.id() == null) {
             throw new BadRequestException("Project id is required for update");
         }
-        Users users = usersRepository.findById(1L).get();// TODO: user from security context
+        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
         Projects projects = getProject(projectRequestDTO.id());
         if (projects.getDeletedAt() != null) {
             throw new BadRequestException("Project is deleted and cannot be updated");
         }
         ProjectMember projectOwner = projectMemberService.getProjectOwner(projects);
-        if (!Objects.equals(projectOwner.getUsers().getId(), users.getId())) {
+        if (!Objects.equals(projectOwner.getUsers().getId(), jwtUserPrincipal.id())) {
             throw new PermissionException("User is not the owner of the project");
         }
         projects.setName(projectRequestDTO.name());
@@ -102,10 +106,10 @@ public class ProjectsServiceImpl implements ProjectsService {
 
     @Override
     public void deleteProject(Long id) {
-        Users users = new Users(); // TODO: user from security context
+        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
         Projects projects = getProject(id);
         ProjectMember projectOwner = projectMemberService.getProjectOwner(projects);
-        if (!Objects.equals(projectOwner.getUsers().getId(), users.getId())) {
+        if (!Objects.equals(projectOwner.getUsers().getId(), jwtUserPrincipal.id())) {
             throw new PermissionException("User is not the owner of the project");
         }
         if (projects.getDeletedAt() != null) {

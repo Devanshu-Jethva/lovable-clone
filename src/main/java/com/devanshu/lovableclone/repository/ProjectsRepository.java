@@ -14,9 +14,8 @@ public interface ProjectsRepository extends JpaRepository<Projects, Long> {
             select p
                 from Projects p
                 join ProjectMember pm on pm.projects.id = p.id
-                where pm.users.id = :userId
+                where pm.users.id = :ownerId
                   and p.deletedAt IS NULL
-                  and pm.projectRole = com.devanshu.lovableclone.constant.ProjectRole.OWNER
                 order by p.updatedAt desc
             """)
     List<Projects> getAllAccessibleProjects(Long ownerId);
