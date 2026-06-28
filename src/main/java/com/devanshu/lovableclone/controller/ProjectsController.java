@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,13 +25,14 @@ public class ProjectsController {
     public ResponseEntity<Object> createProject(@Valid @RequestBody ProjectRequestDTO projectRequestDTO) {
         ProjectDetailDTO projectDetailDTO = projectsService.createProject(projectRequestDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
-                            .body(ApiResponse.<ProjectDetailDTO>builder()
-                                            .data(projectDetailDTO)
-                                            .message("Project added successfully")
-                                            .build());
+                             .body(ApiResponse.<ProjectDetailDTO>builder()
+                                              .data(projectDetailDTO)
+                                              .message("Project added successfully")
+                                              .build());
     }
 
     @PutMapping
+    @PreAuthorize("@securityExpression.canEditProject(#projectRequestDTO.id())")
     public ResponseEntity<Object> updateProject(@Valid @RequestBody ProjectRequestDTO projectRequestDTO) {
         ProjectDetailDTO projectDetailDTO = projectsService.updateProject(projectRequestDTO);
         return ResponseEntity.ok(ApiResponse.<ProjectDetailDTO>builder()
@@ -41,7 +43,6 @@ public class ProjectsController {
 
     @GetMapping
     public ResponseEntity<Object> getAllProjects() {
-        Long userId = 1L; // TODO
         List<ProjectListDTO> projectListDTOs = projectsService.getAllProjects();
         return ResponseEntity.ok(ApiResponse.<List<ProjectListDTO>>builder()
                                             .data(projectListDTOs)
@@ -50,20 +51,18 @@ public class ProjectsController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@securityExpression.canViewProject(#id)")
     public ResponseEntity<Object> getProjectById(@PathVariable Long id) {
-        Long userId = 1L;
         ProjectDetailDTO projectDetailDTO = projectsService.getProjectById(id);
-        return ResponseEntity.ok(ApiResponse.<ProjectDetailDTO>builder()
-                                            .data(projectDetailDTO)
+        return ResponseEntity.ok(ApiResponse.<ProjectDetailDTO>builder().data(projectDetailDTO)
                                             .message("Project fetched successfully")
                                             .build());
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@securityExpression.canDeleteProject(#id)")
     public ResponseEntity<Object> deleteProjectById(@PathVariable Long id) {
         projectsService.deleteProject(id);
-        return ResponseEntity.ok(ApiResponse.builder()
-                                            .message("Project deleted successfully")
-                                            .build());
+        return ResponseEntity.ok(ApiResponse.builder().message("Project deleted successfully").build());
     }
 }

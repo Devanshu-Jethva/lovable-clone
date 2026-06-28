@@ -75,13 +75,7 @@ public class ProjectsServiceImpl implements ProjectsService {
 
     @Override
     public ProjectDetailDTO getProjectById(Long id) {
-        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
-        Projects projects = getProject(id);
-        ProjectMember projectOwner = projectMemberService.getProjectOwner(projects);
-        if (!Objects.equals(projectOwner.getUsers().getId(), jwtUserPrincipal.id())) {
-            throw new PermissionException("User is not the owner of the project");
-        }
-        return projectsMapper.toDetailDto(projects);
+        return projectsMapper.toDetailDto(getProject(id));
     }
 
     @Override

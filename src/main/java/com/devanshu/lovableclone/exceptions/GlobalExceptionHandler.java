@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -40,6 +42,20 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                              .body(ErrorResponse.of("VALIDATION_ERROR", "Request validation failed", fieldErrors));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException ex, HttpServletRequest request) {
+        log.error("Authentication error occurred: {}", request.getRequestURL(), ex);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                             .body(ErrorResponse.of("UNAUTHORIZED", "Please login first"));
+    }
+
+    @ExceptionHandler({AccessDeniedException.class, SecurityException.class})
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(Exception ex, HttpServletRequest request) {
+        log.error("Access denied error occurred: {}", request.getRequestURL(), ex);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                             .body(ErrorResponse.of("FORBIDDEN", "You don't have permission to perform this action"));
     }
 
     /**

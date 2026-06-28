@@ -1,5 +1,6 @@
 package com.devanshu.lovableclone.security;
 
+import com.devanshu.lovableclone.constant.ProjectPermission;
 import com.devanshu.lovableclone.repository.ProjectMemberRepository;
 import com.devanshu.lovableclone.service.HelperService;
 import lombok.AccessLevel;
@@ -15,13 +16,31 @@ public class SecurityExpression {
     ProjectMemberRepository projectMemberRepository;
     HelperService helperService;
 
-    public boolean canViewProject(Long projectId) {
+    private boolean hasPermission(Long projectId, ProjectPermission projectPermission) {
         JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
 
-        projectMemberRepository.findRoleByProject
+        return projectMemberRepository.findRoleByProjectIdAndUserId(projectId, jwtUserPrincipal.id())
+                                      .map(role -> role.getPermissions().contains(projectPermission))
+                                      .orElse(false);
+    }
+
+    public boolean canViewProject(Long projectId) {
+        return hasPermission(projectId, ProjectPermission.VIEW);
     }
 
     public boolean canEditProject(Long projectId) {
+        return hasPermission(projectId, ProjectPermission.EDIT);
+    }
 
+    public boolean canDeleteProject(Long projectId) {
+        return hasPermission(projectId, ProjectPermission.DELETE);
+    }
+
+    public boolean canViewProjectMembers(Long projectId) {
+        return hasPermission(projectId, ProjectPermission.VIEW_MEMBERS);
+    }
+
+    public boolean canManageProjectMembers(Long projectId) {
+        return hasPermission(projectId, ProjectPermission.MANAGE_MEMBERS);
     }
 }

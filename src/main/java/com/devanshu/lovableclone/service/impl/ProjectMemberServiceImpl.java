@@ -14,6 +14,7 @@ import com.devanshu.lovableclone.exceptions.PermissionException;
 import com.devanshu.lovableclone.mapper.ProjectMemberMapper;
 import com.devanshu.lovableclone.repository.ProjectMemberRepository;
 import com.devanshu.lovableclone.repository.ProjectsRepository;
+import com.devanshu.lovableclone.security.JwtUserPrincipal;
 import com.devanshu.lovableclone.service.HelperService;
 import com.devanshu.lovableclone.service.ProjectMemberService;
 import lombok.RequiredArgsConstructor;
@@ -45,22 +46,19 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
 
     @Override
     public ProjectMemberDTO inviteProjectMember(Long projectId, InviteProjectMemberRequestDTO inviteProjectMemberRequestDTO) {
-        Users users = new Users(); // TODO: user from security context
-        if (projectMemberRepository.existsByProjects_IdAndUsers_Id(projectId, users.getId())) {
-            throw new BadRequestException("User is already a member of the project");
-        }
-        if (inviteProjectMemberRequestDTO.username().equals(users.getUsername())) {
+        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
+        if (inviteProjectMemberRequestDTO.username().equals(jwtUserPrincipal.username())) {
             throw new BadRequestException("User cannot invite themselves");
         }
-        Projects projects = getProject(projectId);
-        ProjectMember projectOwner = getProjectOwner(projects);
-        if (!Objects.equals(projectOwner.getUsers().getId(), users.getId())) {
-            throw new PermissionException("User is not the owner of the project");
-        }
+
         Users invitedUser = helperService.getUserByUsername(inviteProjectMemberRequestDTO.username());
         if (invitedUser.getDeletedAt() != null) {
             throw new BadRequestException("User with username " + inviteProjectMemberRequestDTO.username() + " is deleted");
         }
+        if (projectMemberRepository.existsByProjects_IdAndUsers_Id(projectId, invitedUser.getId())) {
+            throw new BadRequestException("User is already a member of the project");
+        }
+        Projects projects = getProject(projectId);
         ProjectMember projectMember = ProjectMember.builder().users(invitedUser).projects(projects)
                                                    .id(new ProjectMemberId(invitedUser.getId(), projectId))
                                                    .projectRole(inviteProjectMemberRequestDTO.projectRole())
