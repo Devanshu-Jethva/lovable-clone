@@ -1,24 +1,164 @@
 package com.devanshu.lovableclone.service.impl;
 
-import com.devanshu.lovableclone.dto.subscription.CheckoutRequestDTO;
+import com.devanshu.lovableclone.constant.ApplicationConstants;
+import com.devanshu.lovableclone.constant.SubscriptionStatus;
 import com.devanshu.lovableclone.dto.subscription.SubscriptionResponseDTO;
+import com.devanshu.lovableclone.entity.Plan;
+import com.devanshu.lovableclone.entity.Subscription;
+import com.devanshu.lovableclone.entity.Users;
+import com.devanshu.lovableclone.exceptions.NotFoundException;
+import com.devanshu.lovableclone.mapper.SubscriptionMapper;
+import com.devanshu.lovableclone.repository.ProjectMemberRepository;
+import com.devanshu.lovableclone.repository.SubscriptionRepository;
+import com.devanshu.lovableclone.security.JwtUserPrincipal;
+import com.devanshu.lovableclone.service.HelperService;
+import com.devanshu.lovableclone.service.PlanService;
 import com.devanshu.lovableclone.service.SubscriptionService;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
+@Slf4j
 @Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SubscriptionServiceImpl implements SubscriptionService {
+
+    SubscriptionRepository subscriptionRepository;
+    SubscriptionMapper subscriptionMapper;
+    ProjectMemberRepository projectMemberRepository;
+    HelperService helperService;
+    PlanService planService;
+
     @Override
     public SubscriptionResponseDTO getCurrentSubscription() {
-        return null;
+        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
+
+        Subscription currentSubscription = subscriptionRepository.findByUsersIdAndStatusIn(jwtUserPrincipal.id(),
+                SubscriptionStatus.getActiveSubscriptionStatusList()).orElse(new Subscription());
+
+        return subscriptionMapper.toDto(currentSubscription);
     }
 
     @Override
-    public String getStripeCheckoutUrl(CheckoutRequestDTO checkoutRequestDTO) {
-        return "";
+    public boolean canCreateNewProject() {
+        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
+        SubscriptionResponseDTO currentSubscription = getCurrentSubscription();
+
+        int countOfOwnedProjects = projectMemberRepository.countProjectOwnedByUser(jwtUserPrincipal.id());
+
+        if (currentSubscription.planResponseListDTO() == null) {
+            return countOfOwnedProjects < ApplicationConstants.FREE_TIER_PROJECTS_ALLOWED;
+        }
+
+        return countOfOwnedProjects < currentSubscription.planResponseListDTO().maxProjects();
     }
 
     @Override
-    public String getStripePortalUrl() {
-        return "";
+    @Transactional
+    public void activateSubscription(Long userId, Long planId, String subscriptionId, String stripeCustomerId) {
+        if (subscriptionRepository.existsByStripeSubscriptionId(subscriptionId)) {
+            log.error("Subscription already exists");
+            return;
+        }
+
+        Users users = helperService.getUser(userId);
+        Plan plan = planService.getPlan(planId);
+
+        Subscription subscription = Subscription.builder()
+                                                .users(users)
+                                                .plan(plan)
+                                                .stripeSubscriptionId(subscriptionId)
+                                                .status(SubscriptionStatus.INCOMPLETE)
+                                                .build();
+
+        subscriptionRepository.save(subscription);
     }
+
+    @Override
+    @Transactional
+    public void updateSubscription(String stripeSubscriptionId, SubscriptionStatus status, Instant periodStart, Instant periodEnd, Boolean cancelAtPeriodEnd, Long planId) {
+        Subscription subscription = getSubscription(stripeSubscriptionId);
+
+        boolean hasSubscriptionUpdated = false;
+
+        if (status != null && status != subscription.getStatus()) {
+            subscription.setStatus(status);
+            hasSubscriptionUpdated = true;
+        }
+
+        if (periodStart != null && !periodStart.equals(subscription.getStartDate())) {
+            subscription.setStartDate(periodStart);
+            hasSubscriptionUpdated = true;
+        }
+
+        if (periodEnd != null && !periodEnd.equals(subscription.getEndDate())) {
+            subscription.setEndDate(periodEnd);
+            hasSubscriptionUpdated = true;
+        }
+
+        if (cancelAtPeriodEnd != null && cancelAtPeriodEnd != subscription.getCancelAtPeriodEnd()) {
+            subscription.setCancelAtPeriodEnd(cancelAtPeriodEnd);
+            hasSubscriptionUpdated = true;
+        }
+
+        if (planId != null && !planId.equals(subscription.getPlan().getId())) {
+            Plan newPlan = planService.getPlan(planId);
+            subscription.setPlan(newPlan);
+            hasSubscriptionUpdated = true;
+        }
+
+        if (hasSubscriptionUpdated) {
+            log.debug("Subscription has been updated: {}", stripeSubscriptionId);
+            subscriptionRepository.save(subscription);
+        }
+    }
+
+    @Override
+    public void cancelSubscription(String stripeSubscriptionId) {
+        Subscription subscription = getSubscription(stripeSubscriptionId);
+        subscription.setStatus(SubscriptionStatus.CANCELED);
+        subscriptionRepository.save(subscription);
+    }
+
+    @Override
+    public void renewSubscriptionPeriod(String stripeSubscriptionId, Instant periodStart, Instant periodEnd) {
+        Subscription subscription = getSubscription(stripeSubscriptionId);
+
+        Instant newStart = periodStart != null ? periodStart : subscription.getEndDate();
+        subscription.setStartDate(newStart);
+        subscription.setEndDate(periodEnd);
+
+        if (subscription.getStatus() == SubscriptionStatus.PAST_DUE || subscription.getStatus() == SubscriptionStatus.INCOMPLETE) {
+            subscription.setStatus(SubscriptionStatus.ACTIVE);
+        }
+
+        subscriptionRepository.save(subscription);
+    }
+
+    @Override
+    public void markSubscriptionPastDue(String stripeSubscriptionId) {
+        Subscription subscription = getSubscription(stripeSubscriptionId);
+
+        if (SubscriptionStatus.PAST_DUE.equals(subscription.getStatus())) {
+            log.debug("Subscription is already past due, stripeSubscriptionId: {}", stripeSubscriptionId);
+            return;
+        }
+
+        subscription.setStatus(SubscriptionStatus.PAST_DUE);
+        subscriptionRepository.save(subscription);
+
+        // Notify user via email..
+    }
+
+    private Subscription getSubscription(String stripeSubscriptionId) {
+        return subscriptionRepository.findByStripeSubscriptionId(stripeSubscriptionId).orElseThrow(() ->
+                new NotFoundException("Subscription " + stripeSubscriptionId));
+    }
+
 }

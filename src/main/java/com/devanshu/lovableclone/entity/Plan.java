@@ -32,8 +32,8 @@ public class Plan extends CommonModel {
      * This is the price ID from Stripe, which we will use to identify the plan when creating subscriptions.
      * Using this we will be able to identify what is pricing for this plan
      */
-    @Column(name = "stripe_price_id")
-    String stripPriceId;
+    @Column(name = "stripe_price_id", unique = true)
+    String stripePriceId;
 
     /*
      * The maximum number of projects a user can have under this plan.

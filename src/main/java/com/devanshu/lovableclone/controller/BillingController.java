@@ -4,9 +4,11 @@ import com.devanshu.lovableclone.dto.ApiResponse;
 import com.devanshu.lovableclone.dto.plan.PlanResponseListDTO;
 import com.devanshu.lovableclone.dto.subscription.CheckoutRequestDTO;
 import com.devanshu.lovableclone.dto.subscription.SubscriptionResponseDTO;
+import com.devanshu.lovableclone.service.PaymentProcessor;
 import com.devanshu.lovableclone.service.PlanService;
 import com.devanshu.lovableclone.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,10 +22,10 @@ import java.util.List;
 public class BillingController {
 
     private final PlanService planService;
-
     private final SubscriptionService subscriptionService;
+    private final PaymentProcessor paymentProcessor;
 
-    @GetMapping("/api/plan")
+    @GetMapping("/plan")
     public ResponseEntity<Object> getPlans() {
         List<PlanResponseListDTO> planResponseListDTOS = planService.getPlans();
         return ResponseEntity.ok(ApiResponse.<List<PlanResponseListDTO>>builder()
@@ -32,7 +34,7 @@ public class BillingController {
                                             .build());
     }
 
-    @GetMapping("/api/subscription")
+    @GetMapping("/subscription")
     public ResponseEntity<Object> getSubscription() {
         SubscriptionResponseDTO subscriptionResponseDTO = subscriptionService.getCurrentSubscription();
         return ResponseEntity.ok(ApiResponse.<SubscriptionResponseDTO>builder()
@@ -41,18 +43,18 @@ public class BillingController {
                                             .build());
     }
 
-    @PostMapping("/api/stripe/checkout")
+    @PostMapping("/payments/checkout")
     public ResponseEntity<Object> getStripeCheckout(@RequestBody CheckoutRequestDTO checkoutRequestDTO) {
-        String checkoutUrl = subscriptionService.getStripeCheckoutUrl(checkoutRequestDTO);
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                                            .message("Checkout URL retrieved successfully")
-                                            .data(checkoutUrl)
-                                            .build());
+        String checkoutUrl = paymentProcessor.createPaymentCheckoutUrl(checkoutRequestDTO);
+        return ResponseEntity.status(HttpStatus.SEE_OTHER).body(ApiResponse.<String>builder()
+                                                                           .message("Checkout URL retrieved successfully")
+                                                                           .data(checkoutUrl)
+                                                                           .build());
     }
 
-    @GetMapping("/api/stripe/portal")
+    @GetMapping("/payments/portal")
     public ResponseEntity<Object> getStripePortalUrl() {
-        String portalUrl = subscriptionService.getStripePortalUrl();
+        String portalUrl = paymentProcessor.getPaymentPortalUrl();
         return ResponseEntity.ok(ApiResponse.<String>builder()
                                             .message("Portal URL retrieved successfully")
                                             .data(portalUrl)

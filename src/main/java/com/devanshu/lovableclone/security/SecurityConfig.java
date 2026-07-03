@@ -1,6 +1,8 @@
 package com.devanshu.lovableclone.security;
 
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -16,9 +18,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @RequiredArgsConstructor
 @EnableMethodSecurity
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) {
@@ -26,7 +29,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sessionConfig -> sessionConfig.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authConfig -> authConfig.requestMatchers("/api/auth/signup", "/api/auth/login")
+                .authorizeHttpRequests(authConfig -> authConfig.requestMatchers("/auth/signup", "/auth/login", "/webhook/**")
                                                                .permitAll()
                                                                .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

@@ -20,6 +20,7 @@ import com.devanshu.lovableclone.security.JwtUserPrincipal;
 import com.devanshu.lovableclone.service.HelperService;
 import com.devanshu.lovableclone.service.ProjectMemberService;
 import com.devanshu.lovableclone.service.ProjectsService;
+import com.devanshu.lovableclone.service.SubscriptionService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -42,9 +43,14 @@ public class ProjectsServiceImpl implements ProjectsService {
     ProjectMemberRepository projectMemberRepository;
     ProjectMemberService projectMemberService;
     HelperService helperService;
+    SubscriptionService subscriptionService;
 
     @Override
     public ProjectDetailDTO createProject(ProjectRequestDTO projectRequestDTO) {
+        if (subscriptionService.canCreateNewProject()) {
+            throw new BadRequestException("Subscription limit reached, Can't create new project anymore.");
+        }
+
         JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
         Users users = usersRepository.getReferenceById(jwtUserPrincipal.id());
 

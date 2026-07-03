@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/projects/{projectId}/file")
+@RequestMapping("/projects/{projectId}/file")
 public class ProjectFileController {
 
     private final ProjectFileService projectFileService;

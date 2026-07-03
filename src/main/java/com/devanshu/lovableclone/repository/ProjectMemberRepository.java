@@ -6,6 +6,7 @@ import com.devanshu.lovableclone.entity.ProjectMemberId;
 import com.devanshu.lovableclone.entity.Projects;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -26,4 +27,10 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Pr
             and pm.id.projectId = :projectId
             """)
     Optional<ProjectRole> findRoleByProjectIdAndUserId(Long projectId, Long userId);
+
+    @Query("""
+            SELECT COUNT(pm) FROM ProjectMember pm
+            WHERE pm.id.userId = :userId AND pm.projectRole = 'OWNER'
+            """)
+    int countProjectOwnedByUser(@Param("userId") Long userId);
 }

@@ -1,0 +1,49 @@
+Configuration:
+  status: WARN
+
+  Properties:
+    Property:
+      - name: LOG_PATTERN
+        value: >
+          %style{%d{yyyy-MM-dd HH:mm:ss.SSSXXX}}{bright,black}
+          %highlight{%-5level}{INFO=green,WARN=yellow,ERROR=red,DEBUG=blue,TRACE=cyan}
+          %style{[%t]}{bright,black}
+          %style{%logger}{cyan}
+          : %msg%throwable
+      - name: LOG_FILE
+        value: ./logs/lovable-service.log
+      - name: LOG_ARCHIVE
+        value: ./logs/archived/lovable-service-%d{yyyy-MM-dd}-%i.log
+      - name: FILE_LOG_PATTERN
+        value: "%d{yyyy-MM-dd HH:mm:ss.SSSXXX} %-5level [%t] %logger : %msg%n"
+
+  Appenders:
+
+    Console:
+      name: ConsoleAppender
+      target: SYSTEM_OUT
+      PatternLayout:
+        pattern: ${LOG_PATTERN}
+        disableAnsi: false
+
+    RollingFile:
+      name: FileAppender
+      fileName: ${LOG_FILE}
+      filePattern: ${LOG_ARCHIVE}
+      PatternLayout:
+        pattern: ${FILE_LOG_PATTERN}
+      Policies:
+        TimeBasedTriggeringPolicy:
+          interval: 1
+          modulate: true
+        SizeBasedTriggeringPolicy:
+          size: 10MB
+      DefaultRolloverStrategy:
+        max: 10
+
+  Loggers:
+    Root:
+      level: INFO   # overridden by application.yml
+      AppenderRef:
+        - ref: ConsoleAppender
+        - ref: FileAppender

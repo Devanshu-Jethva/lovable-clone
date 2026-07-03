@@ -17,7 +17,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/projects/{projectId}/member")
+@RequestMapping("/projects/{projectId}/member")
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ProjectMemberController {
 

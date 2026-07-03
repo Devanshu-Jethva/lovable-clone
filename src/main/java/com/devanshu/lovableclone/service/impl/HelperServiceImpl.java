@@ -1,6 +1,7 @@
 package com.devanshu.lovableclone.service.impl;
 
 import com.devanshu.lovableclone.entity.Users;
+import com.devanshu.lovableclone.exceptions.NotFoundException;
 import com.devanshu.lovableclone.repository.UsersRepository;
 import com.devanshu.lovableclone.security.JwtUserPrincipal;
 import com.devanshu.lovableclone.service.HelperService;
@@ -20,12 +21,12 @@ public class HelperServiceImpl implements HelperService {
 
     @Override
     public Users getUser(Long id) {
-        return usersRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        return usersRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
     }
 
     @Override
     public Users getUserByUsername(String email) {
-        return usersRepository.findByUsername(email).orElseThrow(() -> new RuntimeException("User not found"));
+        return usersRepository.findByUsername(email).orElseThrow(() -> new NotFoundException("User not found"));
     }
 
     @Override

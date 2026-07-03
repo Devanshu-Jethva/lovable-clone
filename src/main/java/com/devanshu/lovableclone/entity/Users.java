@@ -32,6 +32,9 @@ public class Users extends CommonModel {
     @Column(name = "password", nullable = false)
     String password;
 
+    @Column(name = "stripe_customer_id", unique = true)
+    String stripeCustomerId;
+
     @Column(name = "deleted_at")
     Instant deletedAt;
 }

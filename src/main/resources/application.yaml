@@ -19,5 +19,24 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+logging:
+  config: classpath:log4j2-spring.yml
+  level:
+    root: INFO
+    com.devanshu: DEBUG
+
+server:
+  servlet:
+    context-path: /api
+
 jwt:
-  secret: awer546wey353riugjnm23q343t5tyhd7u4vcxh674heiuwr546hfs
+  secret: ${JWT_SECRET}
+
+stripe:
+  api:
+    secret: ${STRIPE_API_SECRET}
+  webhook:
+    secret: ${STRIPE_WEBHOOK_SECRET}
+
+panel-url:
+  admin: http://localhost:8080

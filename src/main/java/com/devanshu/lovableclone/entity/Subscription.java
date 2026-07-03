@@ -10,6 +10,7 @@ import java.time.Instant;
 
 @Getter
 @Setter
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
@@ -32,13 +33,10 @@ public class Subscription extends CommonModel {
     @JoinColumn(name = "plan_id", nullable = false)
     Plan plan;
 
-    @Column(name = "stripe_customer_id", nullable = false)
-    String stripeCustomerId;
-
     @Column(name = "stripe_subscription_id", nullable = false)
     String stripeSubscriptionId;
 
-    @Column(name = "start_date", nullable = false)
+    @Column(name = "start_date")
     Instant startDate;
 
     @Column(name = "end_date")
@@ -46,6 +44,10 @@ public class Subscription extends CommonModel {
 
     @Column(name = "cancelled_date")
     Instant cancelledDate;
+
+    @Builder.Default
+    @Column(name = "cancel_at_period_end")
+    Boolean cancelAtPeriodEnd = false;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
