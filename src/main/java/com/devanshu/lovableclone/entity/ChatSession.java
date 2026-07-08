@@ -10,6 +10,7 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
+@Builder
 @Table(name = "chat_session")
 @AllArgsConstructor
 @NoArgsConstructor
@@ -18,10 +19,9 @@ public class ChatSession extends CommonModel {
 
     @Serial
     private static final long serialVersionUID = -6253140643260841031L;
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
+
+    @EmbeddedId
+    ChatSessionId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "users_id", nullable = false)

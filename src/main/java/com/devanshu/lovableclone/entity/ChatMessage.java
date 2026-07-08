@@ -10,6 +10,7 @@ import java.io.Serial;
 @Getter
 @Setter
 @Entity
+@Builder
 @Table(name = "chat_session")
 @AllArgsConstructor
 @NoArgsConstructor
@@ -23,8 +24,11 @@ public class ChatMessage extends CommonModel {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "chat_session_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumns({
+            @JoinColumn(name = "projects_id", referencedColumnName = "projects_id", nullable = false),
+            @JoinColumn(name = "users_id", referencedColumnName = "users_id", nullable = false)
+    })
     ChatSession chatSession;
 
     @Column(name = "content", nullable = false)

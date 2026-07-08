@@ -9,6 +9,7 @@ import java.io.Serial;
 @Getter
 @Setter
 @Entity
+@Builder
 @Table(name = "project_file")
 @AllArgsConstructor
 @NoArgsConstructor

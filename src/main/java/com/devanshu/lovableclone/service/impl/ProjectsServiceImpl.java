@@ -119,7 +119,8 @@ public class ProjectsServiceImpl implements ProjectsService {
         projectsRepository.save(projects);
     }
 
-    private Projects getProject(Long id) {
+    @Override
+    public Projects getProject(Long id) {
         return projectsRepository.findById(id)
                                  .orElseThrow(() -> new NotFoundException("Project with " + id + " not found"));
     }

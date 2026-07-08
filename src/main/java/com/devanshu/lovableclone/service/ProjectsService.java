@@ -3,6 +3,7 @@ package com.devanshu.lovableclone.service;
 import com.devanshu.lovableclone.dto.projects.ProjectDetailDTO;
 import com.devanshu.lovableclone.dto.projects.ProjectListDTO;
 import com.devanshu.lovableclone.dto.projects.ProjectRequestDTO;
+import com.devanshu.lovableclone.entity.Projects;
 
 import java.util.List;
 
@@ -17,4 +18,6 @@ public interface ProjectsService {
     ProjectDetailDTO updateProject(ProjectRequestDTO projectRequestDTO);
 
     void deleteProject(Long id);
+
+    Projects getProject(Long id);
 }
