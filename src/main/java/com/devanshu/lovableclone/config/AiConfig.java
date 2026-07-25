@@ -8,12 +8,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AiConfig {
 
-    @Bean
-    public ChatClient chatClient(ChatClient.Builder chatClientBuilder) {
-        return chatClientBuilder
-                .defaultAdvisors(
-                        new SimpleLoggerAdvisor()
-                )
-                .build();
-    }
+	@Bean
+	ChatClient chatClient(final ChatClient.Builder chatClientBuilder) {
+		return chatClientBuilder.defaultAdvisors(new SimpleLoggerAdvisor()).build();
+	}
 }

@@ -1,27 +1,31 @@
 package com.devanshu.lovableclone.service.impl;
 
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.stereotype.Service;
+
 import com.devanshu.lovableclone.dto.chat.StreamResponseDTO;
 import com.devanshu.lovableclone.entity.ChatSession;
+import com.devanshu.lovableclone.llm.advisor.FileTreeContextAdvisor;
+import com.devanshu.lovableclone.llm.tool.CodeGenerationTools;
 import com.devanshu.lovableclone.security.JwtUserPrincipal;
 import com.devanshu.lovableclone.service.AiGenerationService;
 import com.devanshu.lovableclone.service.ChatSessionService;
 import com.devanshu.lovableclone.service.HelperService;
 import com.devanshu.lovableclone.service.ProjectFileService;
 import com.devanshu.lovableclone.util.PromptUtils;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.metadata.Usage;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
-
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -29,68 +33,62 @@ import java.util.regex.Pattern;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AiGenerationServiceImpl implements AiGenerationService {
 
-    private static final Pattern FILE_TAG_PATTERN = Pattern.compile("<file path=\"([^\"]+)\">(.*?)</file>", Pattern.DOTALL);
-    ChatClient chatClient;
-    HelperService helperService;
-    ChatSessionService chatSessionService;
-    ProjectFileService projectFileService;
+	private static final Pattern FILE_TAG_PATTERN = Pattern.compile("<file path=\"([^\"]+)\">(.*?)</file>",
+			Pattern.DOTALL);
+	ChatClient chatClient;
+	HelperService helperService;
+	ChatSessionService chatSessionService;
+	ProjectFileService projectFileService;
+	FileTreeContextAdvisor fileTreeContextAdvisor;
 
-    @Override
-    public Flux<StreamResponseDTO> streamResponse(String userPrompt, Long projectId) {
-        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
-        ChatSession chatSession = chatSessionService.createChatSessionIfNotExists(projectId);
+	@Override
+	public Flux<StreamResponseDTO> streamResponse(final String userPrompt, final Long projectId) {
+		JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
+		ChatSession chatSession = chatSessionService.createChatSessionIfNotExists(projectId);
 
-        Map<String, Object> advisorParams = Map.of(
-                "userId", jwtUserPrincipal.id(),
-                "projectId", projectId
-        );
+		/*
+		 * this is the context for our advisors and we can get it in advisors
+		 */
+		Map<String, Object> advisorParams = Map.of("userId", jwtUserPrincipal.id(), "projectId", projectId);
 
-        StringBuilder fullResponseBuffer = new StringBuilder();
-//        CodeGenerationTools codeGenerationTools = new CodeGenerationTools(projectFileService, projectId);
+		StringBuilder fullResponseBuffer = new StringBuilder();
+		CodeGenerationTools codeGenerationTools = new CodeGenerationTools(projectFileService, projectId);
 
-        AtomicReference<Long> startTime = new AtomicReference<>(System.currentTimeMillis());
-        AtomicReference<Long> endTime = new AtomicReference<>(0L);
-        AtomicReference<Usage> usageRef = new AtomicReference<>();
+		AtomicReference<Long> startTime = new AtomicReference<>(System.currentTimeMillis());
+		AtomicReference<Long> endTime = new AtomicReference<>(0L);
+		AtomicReference<Usage> usageRef = new AtomicReference<>();
 
-        return chatClient.prompt()
-                         .system(PromptUtils.CODE_GENERATION_SYSTEM_PROMPT)
-                         .user(userPrompt)
-//                         .tools(codeGenerationTools)
-                         .advisors(advisorSpec -> {
-                                     advisorSpec.params(advisorParams);
-//                                     advisorSpec.advisors(fileTreeContextAdvisor);
-                                 }
-                         )
-                         .stream()
-                         .chatResponse()
-                         .doOnNext(response -> {
-                             String content = response.getResult().getOutput().getText();
+		return chatClient.prompt().system(PromptUtils.CODE_GENERATION_SYSTEM_PROMPT).user(userPrompt)
+				.tools(codeGenerationTools).advisors(advisorSpec -> {
+					advisorSpec.params(advisorParams);
+					advisorSpec.advisors(fileTreeContextAdvisor);
+				}).stream().chatResponse().doOnNext(response -> {
+					String content = response.getResult().getOutput().getText();
 
-                             if (content != null && !content.isEmpty() && endTime.get() == 0) { // first non-empty chunk received
-                                 endTime.set(System.currentTimeMillis());
-                             }
+					if (content != null && !content.isEmpty() && endTime.get() == 0) { // first non-empty chunk received
+						endTime.set(System.currentTimeMillis());
+					}
 
-                             usageRef.set(response.getMetadata().getUsage());
+					usageRef.set(response.getMetadata().getUsage());
 
-                             fullResponseBuffer.append(content);
-                         })
-                         .doOnComplete(() -> {
-                             Schedulers.boundedElastic().schedule(() -> {
-                                 parseAndSaveFiles(fullResponseBuffer.toString(), projectId);
+					fullResponseBuffer.append(content);
+				}).doOnComplete(() -> {
+					Schedulers.boundedElastic().schedule(() -> {
+						parseAndSaveFiles(fullResponseBuffer.toString(), projectId);
 
 //                                 long duration = (endTime.get() - startTime.get()) / 1000;
 //                                 finalizeChats(userPrompt, chatSession, fullResponseBuffer.toString(), duration,
 //                                         usageRef.get());
-                             });
-                         })
-                         .doOnError(error -> log.error("Error during streaming for projectId: {}, {}", projectId, error.getMessage()))
-                         .map(response -> {
-                             String text = response.getResult().getOutput().getText();
-                             return new StreamResponseDTO(text != null ? text : "");
-                         });
-    }
+					});
+				}).doOnError(error -> log.error("Error during streaming for projectId: {}, {}", projectId,
+						error.getMessage()))
+				.map(response -> {
+					String text = response.getResult().getOutput().getText();
+					return new StreamResponseDTO(text != null ? text : "");
+				});
+	}
 
-    private void parseAndSaveFiles(String fullResponse, Long projectId) {
+	private void parseAndSaveFiles(final String fullResponse, final Long projectId) {
 //        String dummy = """
 //                <message> I'm going to read the files and generate the code </message>
 //                <file path="src/App.jsx">
@@ -103,14 +101,15 @@ public class AiGenerationServiceImpl implements AiGenerationService {
 //                    .....
 //                </file>
 //                """;
-        Matcher matcher = FILE_TAG_PATTERN.matcher(fullResponse);
-        while (matcher.find()) {
-            String filePath = matcher.group(1);
-            String fileContent = matcher.group(2).trim();
 
-            projectFileService.saveFile(projectId, filePath, fileContent);
-        }
-    }
+		Matcher matcher = FILE_TAG_PATTERN.matcher(fullResponse);
+		while (matcher.find()) {
+			String filePath = matcher.group(1);
+			String fileContent = matcher.group(2).trim();
+
+			projectFileService.saveFile(projectId, filePath, fileContent);
+		}
+	}
 
 //    private void finalizeChats(String userMessage, ChatSession chatSession, String fullText, Long duration, Usage usage) {
 //        Long projectId = chatSession.getProjects().getId();

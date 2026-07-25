@@ -22,10 +22,10 @@ spring:
   ai:
     openai:
       api-key: ${OPEN_ROUTER_API_KEY}
-      base-url: https://openrouter.ai/api
+      base-url: https://openrouter.ai/api/v1
       chat:
         options:
-          model: poolside/laguna-xs-2.1:free
+          model: nvidia/nemotron-3-ultra-550b-a55b:free
           temperature: 0.0
 
 logging:
