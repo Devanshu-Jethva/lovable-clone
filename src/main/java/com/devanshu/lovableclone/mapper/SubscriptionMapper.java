@@ -1,12 +1,16 @@
 package com.devanshu.lovableclone.mapper;
 
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
 import com.devanshu.lovableclone.dto.subscription.SubscriptionResponseDTO;
 import com.devanshu.lovableclone.entity.Subscription;
-import org.mapstruct.Mapper;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = PlanMapper.class)
 public interface SubscriptionMapper {
 
-    SubscriptionResponseDTO toDto(Subscription currentSubscription);
+	@Mapping(source = "plan", target = "planResponseListDTO")
+	@Mapping(target = "tokenUsed", ignore = true)
+	SubscriptionResponseDTO toDto(Subscription currentSubscription);
 
 }

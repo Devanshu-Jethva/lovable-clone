@@ -1,9 +1,7 @@
 package com.devanshu.lovableclone.service;
 
-import com.devanshu.lovableclone.dto.chat.ChatResponseDTO;
-
-import java.util.List;
+import com.devanshu.lovableclone.dto.chat.ChatHistoryResponseDTO;
 
 public interface ChatService {
-    List<ChatResponseDTO> getProjectChatHistory(Long projectId);
+	ChatHistoryResponseDTO getProjectChatHistory(Long projectId);
 }

@@ -1,9 +1,11 @@
 package com.devanshu.lovableclone.entity;
 
 import java.io.Serial;
+import java.util.List;
 
 import com.devanshu.lovableclone.constant.MessageRole;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,16 +15,15 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter
@@ -31,7 +32,6 @@ import lombok.experimental.FieldDefaults;
 @Table(name = "chat_message")
 @AllArgsConstructor
 @NoArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class ChatMessage extends CommonModel {
 
 	@Serial
@@ -39,23 +39,30 @@ public class ChatMessage extends CommonModel {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	Long id;
+	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumns({ @JoinColumn(name = "projects_id", referencedColumnName = "projects_id", nullable = false),
-			@JoinColumn(name = "users_id", referencedColumnName = "users_id", nullable = false) })
-	ChatSession chatSession;
+	@JoinColumn(name = "projects_id", referencedColumnName = "projects_id", nullable = false)
+	@JoinColumn(name = "users_id", referencedColumnName = "users_id", nullable = false)
+	private ChatSession chatSession;
 
-	@Column(name = "content", nullable = false)
-	String content;
-
-	@Column(name = "tool_calls", nullable = false)
-	String toolCalls; // JSON array of tool calls
+	/**
+	 * Null unless {@link MessageRole} is USER
+	 */
+	@Column(name = "content")
+	private String content;
 
 	@Column(name = "token_used", nullable = false)
-	Integer tokenUsed;
+	private Integer tokenUsed;
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "message_role", nullable = false)
-	MessageRole messageRole;
+	private MessageRole messageRole;
+
+	/**
+	 * empty unless {@link MessageRole} is ASSISTANT
+	 */
+	@OneToMany(mappedBy = "chatMessage", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	@OrderBy("sequenceOrder ASC")
+	private List<ChatEvent> events;
 }

@@ -1,23 +1,35 @@
 package com.devanshu.lovableclone.service.impl;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.stereotype.Service;
 
+import com.devanshu.lovableclone.constant.ChatEventType;
+import com.devanshu.lovableclone.constant.MessageRole;
 import com.devanshu.lovableclone.dto.chat.StreamResponseDTO;
+import com.devanshu.lovableclone.dto.projects.file.ProjectFileListDTO;
+import com.devanshu.lovableclone.entity.ChatEvent;
+import com.devanshu.lovableclone.entity.ChatMessage;
 import com.devanshu.lovableclone.entity.ChatSession;
+import com.devanshu.lovableclone.llm.LlmResponseParser;
 import com.devanshu.lovableclone.llm.advisor.FileTreeContextAdvisor;
 import com.devanshu.lovableclone.llm.tool.CodeGenerationTools;
+import com.devanshu.lovableclone.repository.ChatEventRepository;
+import com.devanshu.lovableclone.repository.ChatMessageRepository;
 import com.devanshu.lovableclone.security.JwtUserPrincipal;
 import com.devanshu.lovableclone.service.AiGenerationService;
 import com.devanshu.lovableclone.service.ChatSessionService;
 import com.devanshu.lovableclone.service.HelperService;
 import com.devanshu.lovableclone.service.ProjectFileService;
+import com.devanshu.lovableclone.service.UsageService;
 import com.devanshu.lovableclone.util.PromptUtils;
 
 import lombok.AccessLevel;
@@ -33,13 +45,16 @@ import reactor.core.scheduler.Schedulers;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AiGenerationServiceImpl implements AiGenerationService {
 
-	private static final Pattern FILE_TAG_PATTERN = Pattern.compile("<file path=\"([^\"]+)\">(.*?)</file>",
-			Pattern.DOTALL);
 	ChatClient chatClient;
 	HelperService helperService;
 	ChatSessionService chatSessionService;
 	ProjectFileService projectFileService;
 	FileTreeContextAdvisor fileTreeContextAdvisor;
+	LlmResponseParser llmResponseParser;
+	ChatMessageRepository chatMessageRepository;
+	ChatEventRepository chatEventRepository;
+	UsageService usageService;
+	static Pattern FILE_TAG_PATTERN = Pattern.compile("<file path=\"([^\"]+)\">(.*?)</file>", Pattern.DOTALL);
 
 	@Override
 	public Flux<StreamResponseDTO> streamResponse(final String userPrompt, final Long projectId) {
@@ -52,7 +67,10 @@ public class AiGenerationServiceImpl implements AiGenerationService {
 		Map<String, Object> advisorParams = Map.of("userId", jwtUserPrincipal.id(), "projectId", projectId);
 
 		StringBuilder fullResponseBuffer = new StringBuilder();
-		CodeGenerationTools codeGenerationTools = new CodeGenerationTools(projectFileService, projectId);
+		Set<String> existingFiles = projectFileService.getFiles(projectId).files().stream()
+				.map(ProjectFileListDTO::path).collect(Collectors.toSet());
+
+		CodeGenerationTools codeGenerationTools = new CodeGenerationTools(projectFileService, projectId, existingFiles);
 
 		AtomicReference<Long> startTime = new AtomicReference<>(System.currentTimeMillis());
 		AtomicReference<Long> endTime = new AtomicReference<>(0L);
@@ -63,7 +81,13 @@ public class AiGenerationServiceImpl implements AiGenerationService {
 					advisorSpec.params(advisorParams);
 					advisorSpec.advisors(fileTreeContextAdvisor);
 				}).stream().chatResponse().doOnNext(response -> {
-					String content = response.getResult().getOutput().getText();
+					String content = "";
+
+					if (response.getResult() != null && response.getResult().getOutput() != null
+							&& response.getResult().getOutput().getText() != null) {
+
+						content = response.getResult().getOutput().getText();
+					}
 
 					if (content != null && !content.isEmpty() && endTime.get() == 0) { // first non-empty chunk received
 						endTime.set(System.currentTimeMillis());
@@ -74,11 +98,10 @@ public class AiGenerationServiceImpl implements AiGenerationService {
 					fullResponseBuffer.append(content);
 				}).doOnComplete(() -> {
 					Schedulers.boundedElastic().schedule(() -> {
-						parseAndSaveFiles(fullResponseBuffer.toString(), projectId);
+//						parseAndSaveFiles(fullResponseBuffer.toString(), projectId);
 
-//                                 long duration = (endTime.get() - startTime.get()) / 1000;
-//                                 finalizeChats(userPrompt, chatSession, fullResponseBuffer.toString(), duration,
-//                                         usageRef.get());
+						long duration = (endTime.get() - startTime.get()) / 1000;
+						finalizeChats(userPrompt, chatSession, fullResponseBuffer.toString(), duration, usageRef.get());
 					});
 				}).doOnError(error -> log.error("Error during streaming for projectId: {}, {}", projectId,
 						error.getMessage()))
@@ -111,45 +134,32 @@ public class AiGenerationServiceImpl implements AiGenerationService {
 		}
 	}
 
-//    private void finalizeChats(String userMessage, ChatSession chatSession, String fullText, Long duration, Usage usage) {
-//        Long projectId = chatSession.getProjects().getId();
-//
-//        if (usage != null) {
-//            int totalTokens = usage.getTotalTokens();
-//            usageService.recordTokenUsage(chatSession.getUsers().getId(), totalTokens);
-//        }
-//
-//        // Save the User message
-//        chatMessageRepository.save(
-//                ChatMessage.builder()
-//                           .chatSession(chatSession)
-//                           .messageRole(MessageRole.USER)
-//                           .content(userMessage)
-//                           .tokenUsed(usage.getPromptTokens())
-//                           .build()
-//        );
-//
-//        ChatMessage assistantChatMessage = ChatMessage.builder()
-//                                                      .messageRole(MessageRole.ASSISTANT)
-//                                                      .content("Assistant Message here...")
-//                                                      .chatSession(chatSession)
-//                                                      .tokenUsed(usage.getCompletionTokens())
-//                                                      .build();
-//
-//        assistantChatMessage = chatMessageRepository.save(assistantChatMessage);
-//
-//        List<ChatEvent> chatEventList = llmResponseParser.parseChatEvents(fullText, assistantChatMessage);
-//        chatEventList.addFirst(ChatEvent.builder()
-//                                        .type(ChatEventType.THOUGHT)
-//                                        .chatMessage(assistantChatMessage)
-//                                        .content("Thought for " + duration + "s")
-//                                        .sequenceOrder(0)
-//                                        .build());
-//
-//        chatEventList.stream()
-//                     .filter(e -> e.getType() == ChatEventType.FILE_EDIT)
-//                     .forEach(e -> projectFileService.saveFile(projectId, e.getFilePath(), e.getContent()));
-//
-//        chatEventRepository.saveAll(chatEventList);
-//    }
+	private void finalizeChats(final String userMessage, final ChatSession chatSession, final String fullText,
+			final Long duration, final Usage usage) {
+		Long projectId = chatSession.getProjects().getId();
+
+		if (usage != null) {
+			int totalTokens = usage.getTotalTokens();
+			usageService.recordTokenUsage(chatSession.getUsers().getId(), totalTokens);
+		}
+
+		// Save the User message
+		chatMessageRepository.save(ChatMessage.builder().chatSession(chatSession).messageRole(MessageRole.USER)
+				.content(userMessage).tokenUsed(usage.getPromptTokens()).build());
+
+		ChatMessage assistantChatMessage = ChatMessage.builder().messageRole(MessageRole.ASSISTANT)
+				.content("Assistant Message here...").chatSession(chatSession).tokenUsed(usage.getCompletionTokens())
+				.build();
+
+		assistantChatMessage = chatMessageRepository.save(assistantChatMessage);
+
+		List<ChatEvent> chatEventList = llmResponseParser.parseChatEvents(fullText, assistantChatMessage);
+		chatEventList.addFirst(ChatEvent.builder().type(ChatEventType.THOUGHT).chatMessage(assistantChatMessage)
+				.content("Thought for " + duration + "s").sequenceOrder(0).build());
+
+		chatEventList.stream().filter(e -> e.getType() == ChatEventType.FILE_EDIT)
+				.forEach(e -> projectFileService.saveFile(projectId, e.getFilePath(), e.getContent()));
+
+		chatEventRepository.saveAll(chatEventList);
+	}
 }

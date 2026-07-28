@@ -1,7 +1,5 @@
 package com.devanshu.lovableclone.controller;
 
-import java.util.List;
-
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.ServerSentEvent;
@@ -13,8 +11,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.devanshu.lovableclone.dto.ApiResponse;
+import com.devanshu.lovableclone.dto.chat.ChatHistoryResponseDTO;
 import com.devanshu.lovableclone.dto.chat.ChatRequestDTO;
-import com.devanshu.lovableclone.dto.chat.ChatResponseDTO;
 import com.devanshu.lovableclone.dto.chat.StreamResponseDTO;
 import com.devanshu.lovableclone.service.AiGenerationService;
 import com.devanshu.lovableclone.service.ChatService;
@@ -39,8 +38,10 @@ public class ChatController {
 	}
 
 	@GetMapping("/projects/{projectId}")
-	public ResponseEntity<List<ChatResponseDTO>> getChatHistory(@PathVariable final Long projectId) {
+	public ResponseEntity<Object> getChatHistory(@PathVariable final Long projectId) {
 
-		return ResponseEntity.ok(chatService.getProjectChatHistory(projectId));
+		return ResponseEntity
+				.ok(ApiResponse.<ChatHistoryResponseDTO>builder().message("Chat history fetched successfully")
+						.data(chatService.getProjectChatHistory(projectId)).build());
 	}
 }

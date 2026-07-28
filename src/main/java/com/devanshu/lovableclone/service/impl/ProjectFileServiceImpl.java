@@ -15,6 +15,7 @@ import com.devanshu.lovableclone.dto.projects.file.ProjectFileDetailDTO;
 import com.devanshu.lovableclone.dto.projects.file.ProjectFileListDTO;
 import com.devanshu.lovableclone.entity.ProjectFile;
 import com.devanshu.lovableclone.entity.Projects;
+import com.devanshu.lovableclone.exceptions.NotFoundException;
 import com.devanshu.lovableclone.mapper.ProjectFileMapper;
 import com.devanshu.lovableclone.repository.ProjectFileRepository;
 import com.devanshu.lovableclone.service.ProjectFileService;
@@ -57,7 +58,7 @@ public class ProjectFileServiceImpl implements ProjectFileService {
 			return new ProjectFileDetailDTO(path, content);
 		} catch (Exception e) {
 			log.error("Failed to read file: {}/{}", projectId, path, e);
-			throw new RuntimeException("Failed to read file content", e);
+			throw new NotFoundException(path);
 		}
 	}
 

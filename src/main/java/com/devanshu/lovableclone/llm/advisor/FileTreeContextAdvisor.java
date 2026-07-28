@@ -3,6 +3,7 @@ package com.devanshu.lovableclone.llm.advisor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.ai.chat.client.ChatClientRequest;
 import org.springframework.ai.chat.client.ChatClientResponse;
@@ -57,11 +58,12 @@ public class FileTreeContextAdvisor implements StreamAdvisor {
 		}
 
 		List<ProjectFileListDTO> fileTree = projectFileService.getFiles(projectId).files();
-		String fileTreeContext = "\n\n ---- FILE_TREE ----\n" + fileTree.toString();
+
+		String tree = fileTree.stream().map(ProjectFileListDTO::path).sorted().collect(Collectors.joining("\n"));
+		String fileTreeContext = "\n\n ---- FILE_TREE ----\n" + tree;
 		allMessages.add(new SystemMessage(fileTreeContext));
 
 		allMessages.addAll(userMessages);
-
 		return request.mutate().prompt(new Prompt(allMessages, request.prompt().getOptions())).build();
 	}
 

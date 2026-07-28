@@ -4,7 +4,7 @@ import com.devanshu.lovableclone.dto.auth.ProfileResponseDTO;
 import com.devanshu.lovableclone.entity.Users;
 
 public interface UsersService {
-    ProfileResponseDTO getProfile(Long userId);
+	ProfileResponseDTO getProfile();
 
-    Users getUsers(Long id);
+	Users getUsers(Long id);
 }

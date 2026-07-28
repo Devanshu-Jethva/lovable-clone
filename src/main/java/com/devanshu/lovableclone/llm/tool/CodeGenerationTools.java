@@ -1,11 +1,15 @@
 package com.devanshu.lovableclone.llm.tool;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 
+import com.devanshu.lovableclone.constant.ReadFileResponse;
+import com.devanshu.lovableclone.exceptions.NotFoundException;
 import com.devanshu.lovableclone.service.ProjectFileService;
 
 import lombok.RequiredArgsConstructor;
@@ -17,25 +21,48 @@ public class CodeGenerationTools {
 
 	private final ProjectFileService projectFileService;
 	private final Long projectId;
+	private final Set<String> existingFiles;
 
-	@Tool(name = "read_files", description = "Read the content of files. Only input the file names present inside the FILE_TREE. DO NOT input any path which is not present under the FILE_TREE.")
-	public List<String> readFiles(
-			@ToolParam(description = "List of relative paths (e.g., ['src/App.tsx'])") final List<String> paths) {
+	@Tool(name = "read_files", description = """
+			Reads the content of EXISTING project files.
 
-		List<String> result = new ArrayList<>();
+			Rules:
+			- Request ONLY files present in FILE_TREE.
+			- Never request directories.
+			- Never request files you intend to create.
+			- If a file is not in FILE_TREE, generate it directly.
+			""")
+	public List<ReadFileResponse> readFiles(
+			@ToolParam(description = "List of relative paths (e.g. ['src/App.tsx'])") final List<String> paths) {
 
-		for (String path : paths) {
-			String cleanPath = path.startsWith("/") ? path.substring(1) : path;
+		List<ReadFileResponse> result = new ArrayList<>();
+		Set<String> uniquePaths = new LinkedHashSet<>(paths);
 
-			log.info("Requested file: {}", cleanPath);
+		for (String requestedPath : uniquePaths) {
 
-			String content = projectFileService.getFile(projectId, cleanPath).content();
+			String cleanPath = requestedPath.startsWith("/") ? requestedPath.substring(1) : requestedPath;
 
-			result.add("""
-					--- START OF FILE: %s ---
-					%s
-					--- END OF FILE ---
-					""".formatted(cleanPath, content));
+			log.info("LLM requested: {}", cleanPath);
+
+			if (cleanPath.endsWith("/")) {
+				result.add(new ReadFileResponse(cleanPath, ReadFileResponse.Status.INVALID_REQUEST, null,
+						"Directories cannot be read. Only request files listed in FILE_TREE."));
+				continue;
+			}
+
+			if (!existingFiles.contains(cleanPath)) {
+				result.add(new ReadFileResponse(cleanPath, ReadFileResponse.Status.FILE_NOT_FOUND, null,
+						"This file is not present in FILE_TREE. Generate it directly and never request it again."));
+				continue;
+			}
+
+			try {
+				String content = projectFileService.getFile(projectId, cleanPath).content();
+				result.add(new ReadFileResponse(cleanPath, ReadFileResponse.Status.FILE_FOUND, content, null));
+			} catch (NotFoundException e) {
+				result.add(new ReadFileResponse(cleanPath, ReadFileResponse.Status.FILE_NOT_FOUND, null,
+						"This file could not be read. Generate it directly."));
+			}
 		}
 
 		return result;

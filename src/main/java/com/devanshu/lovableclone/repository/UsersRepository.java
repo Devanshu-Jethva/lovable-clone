@@ -1,12 +1,11 @@
 package com.devanshu.lovableclone.repository;
 
-import com.devanshu.lovableclone.entity.Users;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.Optional;
 
-@Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.devanshu.lovableclone.entity.Users;
+
 public interface UsersRepository extends JpaRepository<Users, Long> {
-    Optional<Users> findByUsername(String username);
+	Optional<Users> findByUsername(String username);
 }

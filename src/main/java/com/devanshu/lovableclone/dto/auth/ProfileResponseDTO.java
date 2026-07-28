@@ -1,4 +1,4 @@
 package com.devanshu.lovableclone.dto.auth;
 
-public record ProfileResponseDTO() {
+public record ProfileResponseDTO(String name, String username) {
 }
