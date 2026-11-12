@@ -1,5 +1,7 @@
 package com.devanshu.lovableclone.service.impl;
 
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 
 import com.devanshu.lovableclone.entity.ChatSession;
@@ -34,9 +36,10 @@ public class ChatSessionServiceImpl implements ChatSessionService {
 		Long userId = jwtUserPrincipal.id();
 
 		ChatSessionId chatSessionId = new ChatSessionId(projectId, userId);
-		ChatSession chatSession = chatSessionRepository.findById(chatSessionId).orElse(null);
+		Optional<ChatSession> chatSessionOptional = chatSessionRepository.findById(chatSessionId);
 
-		if (chatSession == null) {
+		ChatSession chatSession = null;
+		if (chatSessionOptional.isEmpty()) {
 			Projects projects = projectsRepository.findById(projectId)
 					.orElseThrow(() -> new NotFoundException("Project " + projectId));
 			Users users = usersRepository.findById(userId).orElseThrow(() -> new NotFoundException("User " + userId));
@@ -44,6 +47,8 @@ public class ChatSessionServiceImpl implements ChatSessionService {
 			chatSession = ChatSession.builder().id(chatSessionId).projects(projects).users(users).build();
 
 			chatSession = chatSessionRepository.save(chatSession);
+		} else {
+			chatSession = chatSessionOptional.get();
 		}
 		return chatSession;
 	}

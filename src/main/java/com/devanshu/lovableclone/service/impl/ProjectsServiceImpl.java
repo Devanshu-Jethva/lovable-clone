@@ -37,7 +37,6 @@ import lombok.experimental.FieldDefaults;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-@Transactional(rollbackFor = Throwable.class)
 public class ProjectsServiceImpl implements ProjectsService {
 
 	ProjectsRepository projectsRepository;
@@ -50,6 +49,7 @@ public class ProjectsServiceImpl implements ProjectsService {
 	ProjectTemplateService projectTemplateService;
 
 	@Override
+	@Transactional(rollbackFor = Throwable.class)
 	public ProjectDetailDTO createProject(final ProjectRequestDTO projectRequestDTO) {
 		if (!subscriptionService.canCreateNewProject()) {
 			throw new BadRequestException("Subscription limit reached, Can't create new project anymore.");
@@ -85,18 +85,19 @@ public class ProjectsServiceImpl implements ProjectsService {
 	}
 
 	@Override
+	@Transactional(rollbackFor = Throwable.class)
 	public ProjectDetailDTO updateProject(final ProjectRequestDTO projectRequestDTO) {
 		if (projectRequestDTO.id() == null) {
 			throw new BadRequestException("Project id is required for update");
 		}
-		JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
 		Projects projects = getProject(projectRequestDTO.id());
-		if (projects.getDeletedAt() != null) {
-			throw new BadRequestException("Project is deleted and cannot be updated");
-		}
+		JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
 		ProjectMember projectOwner = projectMemberService.getProjectOwner(projects);
 		if (!Objects.equals(projectOwner.getUsers().getId(), jwtUserPrincipal.id())) {
 			throw new PermissionException("User is not the owner of the project");
+		}
+		if (projects.getDeletedAt() != null) {
+			throw new BadRequestException("Project is deleted and cannot be updated");
 		}
 		projects.setName(projectRequestDTO.name());
 		projects.setDescription(projectRequestDTO.description());
@@ -105,6 +106,7 @@ public class ProjectsServiceImpl implements ProjectsService {
 	}
 
 	@Override
+	@Transactional(rollbackFor = Throwable.class)
 	public void deleteProject(final Long id) {
 		JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
 		Projects projects = getProject(id);

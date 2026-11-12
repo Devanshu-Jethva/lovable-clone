@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.devanshu.lovableclone.config.properties.StoragePropertiesConfig;
 import com.devanshu.lovableclone.constant.ApplicationConstants;
 import com.devanshu.lovableclone.entity.ProjectFile;
 import com.devanshu.lovableclone.entity.Projects;
@@ -30,6 +31,7 @@ public class ProjectTemplateServiceImpl implements ProjectTemplateService {
 	private final MinioClient minioClient;
 	private final ProjectFileRepository projectFileRepository;
 	private final ProjectsRepository projectsRepository;
+	private final StoragePropertiesConfig storagePropertiesConfig;
 
 	@Override
 	public void initializeProjectFromTemplate(final Long projectId) {
@@ -39,7 +41,8 @@ public class ProjectTemplateServiceImpl implements ProjectTemplateService {
 		try {
 			Iterable<Result<Item>> results = minioClient
 					.listObjects(ListObjectsArgs.builder().bucket(ApplicationConstants.TEMPLATE_BUCKET)
-							.prefix(ApplicationConstants.TEMPLATE_NAME + "/").recursive(true).build());
+							.prefix(ApplicationConstants.TEMPLATE_NAME + ApplicationConstants.FILE_SEPARATOR)
+							.recursive(true).build());
 
 			List<ProjectFile> filesToSave = new ArrayList<>(); // for metadata in postgres db
 
@@ -47,13 +50,15 @@ public class ProjectTemplateServiceImpl implements ProjectTemplateService {
 				Item item = result.get();
 				String sourceKey = item.objectName();
 
-				String cleanPath = sourceKey.replaceFirst(ApplicationConstants.TEMPLATE_NAME + "/", "");
-				String destKey = projectId + "/" + cleanPath;
+				String cleanPath = sourceKey
+						.replaceFirst(ApplicationConstants.TEMPLATE_NAME + ApplicationConstants.FILE_SEPARATOR, "");
+				String destKey = projectId + ApplicationConstants.FILE_SEPARATOR + cleanPath;
 
-				minioClient.copyObject(CopyObjectArgs
-						.builder().bucket(ApplicationConstants.MAIN_BUCKET).object(destKey).source(SourceObject
-								.builder().bucket(ApplicationConstants.TEMPLATE_BUCKET).object(sourceKey).build())
-						.build());
+				minioClient
+						.copyObject(CopyObjectArgs.builder().bucket(storagePropertiesConfig.getProjectBucket())
+								.object(destKey).source(SourceObject.builder()
+										.bucket(ApplicationConstants.TEMPLATE_BUCKET).object(sourceKey).build())
+								.build());
 
 				ProjectFile pf = ProjectFile.builder().projects(projects).path(cleanPath).minioObjectKey(destKey)
 						.build();

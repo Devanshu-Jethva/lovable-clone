@@ -11,5 +11,6 @@ public final class ApplicationConstants {
 	public static final String TEMPLATE_BUCKET = "starter-projects";
 	public static final String MAIN_BUCKET = "projects";
 	public static final String TEMPLATE_NAME = "react-vite-tailwind-daisyui-starter";
+	public static final String FILE_SEPARATOR = "/";
 
 }

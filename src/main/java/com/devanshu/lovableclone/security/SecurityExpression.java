@@ -20,7 +20,7 @@ public class SecurityExpression {
         JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
 
         return projectMemberRepository.findRoleByProjectIdAndUserId(projectId, jwtUserPrincipal.id())
-                                      .map(role -> role.getPermissions().contains(projectPermission))
+                                      .map(projectRole -> projectRole.getPermissions().contains(projectPermission))
                                       .orElse(false);
     }
 

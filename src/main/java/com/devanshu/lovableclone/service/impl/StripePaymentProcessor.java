@@ -1,5 +1,11 @@
 package com.devanshu.lovableclone.service.impl;
 
+import java.time.Instant;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
 import com.devanshu.lovableclone.config.properties.PanelUrlPropertiesConfig;
 import com.devanshu.lovableclone.constant.SubscriptionStatus;
 import com.devanshu.lovableclone.dto.subscription.CheckoutRequestDTO;
@@ -16,231 +22,243 @@ import com.devanshu.lovableclone.service.SubscriptionService;
 import com.devanshu.lovableclone.util.CommonUtility;
 import com.stripe.StripeClient;
 import com.stripe.exception.StripeException;
-import com.stripe.model.*;
+import com.stripe.model.Invoice;
+import com.stripe.model.Price;
+import com.stripe.model.StripeObject;
+import com.stripe.model.Subscription;
+import com.stripe.model.SubscriptionItem;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
+
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
-import java.time.Instant;
-import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
 public class StripePaymentProcessor implements PaymentProcessor {
-    private final UsersRepository usersRepository;
+	private final UsersRepository usersRepository;
 
-    HelperService helperService;
-    PlanRepository planRepository;
-    StripeClient stripeClient;
-    PanelUrlPropertiesConfig panelUrlPropertiesConfig;
-    SubscriptionService subscriptionService;
+	HelperService helperService;
+	PlanRepository planRepository;
+	StripeClient stripeClient;
+	PanelUrlPropertiesConfig panelUrlPropertiesConfig;
+	SubscriptionService subscriptionService;
 
-    @Override
-    public String createPaymentCheckoutUrl(CheckoutRequestDTO checkoutRequestDTO) {
-        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
-        Users users = helperService.getUser(jwtUserPrincipal.id());
+	@Override
+	public String createPaymentCheckoutUrl(final CheckoutRequestDTO checkoutRequestDTO) {
+		JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
+		Users users = helperService.getUser(jwtUserPrincipal.id());
 
-        Plan plan = planRepository.findById(checkoutRequestDTO.planId())
-                                  .orElseThrow(() -> new NotFoundException("Plan not found"));
+		Plan plan = planRepository.findById(checkoutRequestDTO.planId())
+				.orElseThrow(() -> new NotFoundException("Plan not found"));
 
-        SessionCreateParams.Builder builder = SessionCreateParams
-                .builder()
-                .addLineItem(SessionCreateParams.LineItem.builder()
-                                                         .setPrice(plan.getStripePriceId())
-                                                         .setQuantity(1L)
-                                                         .build())
-                .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
-                .setSubscriptionData(new SessionCreateParams.SubscriptionData.Builder().setBillingMode(
-                        SessionCreateParams.SubscriptionData.BillingMode.builder()
-                                                                        .setType(SessionCreateParams.SubscriptionData.BillingMode.Type.FLEXIBLE)
-                                                                        .build()).build()
-                )
-                .setSuccessUrl(panelUrlPropertiesConfig.getAdmin() + "/success.html?session_id={CHECKOUT_SESSION_ID}")
-                .setCancelUrl(panelUrlPropertiesConfig.getAdmin() + "/cancel.html")
-                .putMetadata("user_id", jwtUserPrincipal.id().toString())
-                .putMetadata("plan_id", plan.getId().toString());
-        try {
-            String stripeCustomerId = users.getStripeCustomerId();
-            if (StringUtils.hasText(stripeCustomerId)) {
-                builder.setCustomer(stripeCustomerId);
-            } else {
-                builder.setCustomerEmail(users.getUsername());
-            }
-            Session session = stripeClient.v1().checkout().sessions().create(builder.build());
-            return session.getUrl();
-        } catch (StripeException e) {
-            throw new RuntimeException(e);
-        }
-    }
+		SessionCreateParams.Builder builder = SessionCreateParams.builder()
+				.addLineItem(SessionCreateParams.LineItem
+						.builder().setPrice(plan.getStripePriceId()).setQuantity(1L).build())
+				.setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+				.setSubscriptionData(new SessionCreateParams.SubscriptionData.Builder()
+						.setBillingMode(SessionCreateParams.SubscriptionData.BillingMode.builder()
+								.setType(SessionCreateParams.SubscriptionData.BillingMode.Type.FLEXIBLE).build())
+						.build())
+				.setSuccessUrl(panelUrlPropertiesConfig.getAdmin() + "/success.html?session_id={CHECKOUT_SESSION_ID}")
+				.setCancelUrl(panelUrlPropertiesConfig.getAdmin() + "/cancel.html")
+				.putMetadata("user_id", jwtUserPrincipal.id().toString())
+				.putMetadata("plan_id", plan.getId().toString());
 
-    @Override
-    public String getPaymentPortalUrl() {
-        JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
-        Users users = helperService.getUser(jwtUserPrincipal.id());
-        String stripeCustomerId = users.getStripeCustomerId();
+		String stripeCustomerId = users.getStripeCustomerId();
+		if (StringUtils.hasText(stripeCustomerId)) {
+			/*
+			 * If stripe customer id is provided then stripe will not create stripe user
+			 * again and again
+			 */
+			builder.setCustomer(stripeCustomerId);
+		} else {
+			builder.setCustomerEmail(users.getUsername());
+		}
+		try {
+			// making api call to stripe
+			Session session = stripeClient.v1().checkout().sessions().create(builder.build());
+			return session.getUrl();
+		} catch (StripeException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
-        if (!StringUtils.hasText(stripeCustomerId)) {
-            throw new BadRequestException("User does not have a Stripe Customer Id, UserId:" + jwtUserPrincipal.id());
-        }
+	@Override
+	public String getPaymentPortalUrl() {
+		JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
+		Users users = helperService.getUser(jwtUserPrincipal.id());
+		String stripeCustomerId = users.getStripeCustomerId();
 
-        try {
+		if (!StringUtils.hasText(stripeCustomerId)) {
+			throw new BadRequestException("User does not have a Stripe Customer Id, UserId:" + jwtUserPrincipal.id());
+		}
 
-            com.stripe.param.billingportal.SessionCreateParams params =
-                    com.stripe.param.billingportal.SessionCreateParams.builder()
-                                                                      .setCustomerAccount(stripeCustomerId)
-                                                                      .setReturnUrl(panelUrlPropertiesConfig.getAdmin())
-                                                                      .build();
+		try {
 
-            com.stripe.model.billingportal.Session session = stripeClient.v1().billingPortal().sessions()
-                                                                         .create(params);
+			com.stripe.param.billingportal.SessionCreateParams params = com.stripe.param.billingportal.SessionCreateParams
+					.builder().setCustomerAccount(stripeCustomerId).setReturnUrl(panelUrlPropertiesConfig.getAdmin())
+					.build();
 
-            return session.getUrl();
-        } catch (StripeException e) {
-            throw new RuntimeException(e);
-        }
-    }
+			com.stripe.model.billingportal.Session session = stripeClient.v1().billingPortal().sessions()
+					.create(params);
 
-    @Override
-    public void handleWebhookEvent(String type, StripeObject stripeObject, Map<String, String> metadata) {
-        log.debug("Inside StripePaymentProcessor::handleWebhookEvent {}", type);
+			return session.getUrl();
+		} catch (StripeException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
-        switch (type) {
-            case "checkout.session.completed" -> handleCheckoutSessionCompleted(stripeObject, metadata);
-            case "customer.subscription.updated" -> handleCustomerSubscriptionUpdated(stripeObject);
-            case "customer.subscription.deleted" -> handleCustomerSubscriptionDeleted(stripeObject);
-            case "invoice.paid" -> handleInvoicePaid(stripeObject);
-            case "invoice.payment_failed" -> handleInvoicePaymentFailed(stripeObject);
-            default -> log.debug("Ignored {}", type);
-        }
-    }
+	@Override
+	public void handleWebhookEvent(final String type, final StripeObject stripeObject,
+			final Map<String, String> metadata) {
+		log.debug("Inside StripePaymentProcessor::handleWebhookEvent {}", type);
 
-    /**
-     * One time when checkout session completed
-     */
-    private void handleCheckoutSessionCompleted(StripeObject stripeObject, Map<String, String> metadata) {
+		switch (type) {
+		case "checkout.session.completed" -> handleCheckoutSessionCompleted(stripeObject, metadata);
+		case "customer.subscription.updated" -> handleCustomerSubscriptionUpdated(stripeObject);
+		case "customer.subscription.deleted" -> handleCustomerSubscriptionDeleted(stripeObject);
+		case "invoice.paid" -> handleInvoicePaid(stripeObject);
+		case "invoice.payment_failed" -> handleInvoicePaymentFailed(stripeObject);
+		default -> log.debug("Ignored {}", type);
+		}
+	}
 
-        if (stripeObject instanceof Session session) {
+	/**
+	 * One time when checkout session completed
+	 */
+	private void handleCheckoutSessionCompleted(final StripeObject stripeObject, final Map<String, String> metadata) {
 
-            String userIdValue = metadata.get("user_id");
-            String planIdValue = metadata.get("plan_id");
+		if (stripeObject instanceof Session session) {
 
-            if (userIdValue == null || planIdValue == null) {
-                log.error("handleCheckoutSessionCompleted::Required metadata missing for session {}", session.getId());
-                return;
-            }
+			String userIdValue = metadata.get("user_id");
+			String planIdValue = metadata.get("plan_id");
 
-            Long userId = Long.parseLong(userIdValue);
-            Long planId = Long.parseLong(planIdValue);
+			if (userIdValue == null || planIdValue == null) {
+				log.error("handleCheckoutSessionCompleted::Required metadata missing for session {}", session.getId());
+				return;
+			}
 
-            String subscriptionId = session.getSubscription();
-            String stripeCustomerId = session.getCustomer();
+			Long userId = Long.parseLong(userIdValue);
+			Long planId = Long.parseLong(planIdValue);
 
-            Users users = helperService.getUser(userId);
+			String subscriptionId = session.getSubscription();
+			String stripeCustomerId = session.getCustomer();
 
-            if (users.getStripeCustomerId() == null) {
-                users.setStripeCustomerId(stripeCustomerId);
-                usersRepository.save(users);
-            }
-            subscriptionService.activateSubscription(userId, planId, subscriptionId, stripeCustomerId);
-        }
-    }
+			Users users = helperService.getUser(userId);
 
-    /**
-     * when user cancels of upgrades or any other updates
-     */
-    private void handleCustomerSubscriptionUpdated(StripeObject stripeObject) {
-        if (stripeObject instanceof Subscription subscription) {
-            SubscriptionStatus status = SubscriptionStatus.toEnum(subscription.getStatus());
-            if (status == null) {
-                log.warn("handleCustomerSubscriptionUpdated::Unknown status '{}' for subscription {}", subscription.getStatus(), subscription.getId());
-                return;
-            }
+			if (users.getStripeCustomerId() == null) {
+				users.setStripeCustomerId(stripeCustomerId);
+				usersRepository.save(users);
+			}
+			subscriptionService.activateSubscription(userId, planId, subscriptionId, stripeCustomerId);
+		}
+	}
 
-            if (subscription.getItems().getData().isEmpty()) {
-                log.warn("handleCustomerSubscriptionUpdated::No subscription items found for {}", subscription.getId());
-                return;
-            }
+	/**
+	 * when user cancels or upgrades or any other updates
+	 */
+	private void handleCustomerSubscriptionUpdated(final StripeObject stripeObject) {
+		if (stripeObject instanceof Subscription subscription) {
+			SubscriptionStatus status = SubscriptionStatus.toEnum(subscription.getStatus());
+			if (status == null) {
+				log.warn("handleCustomerSubscriptionUpdated::Unknown status '{}' for subscription {}",
+						subscription.getStatus(), subscription.getId());
+				return;
+			}
 
-            SubscriptionItem item = subscription.getItems().getData().getFirst();
-            Instant periodStart = CommonUtility.toInstant(item.getCurrentPeriodStart());
-            Instant periodEnd = CommonUtility.toInstant(item.getCurrentPeriodEnd());
+			if (subscription.getItems().getData().isEmpty()) {
+				log.warn("handleCustomerSubscriptionUpdated::No subscription items found for {}", subscription.getId());
+				return;
+			}
 
-            Long planId = resolvePlanId(item.getPrice());
+			SubscriptionItem item = subscription.getItems().getData().getFirst();
+			Instant periodStart = CommonUtility.toInstant(item.getCurrentPeriodStart());
+			Instant periodEnd = CommonUtility.toInstant(item.getCurrentPeriodEnd());
 
-            subscriptionService.updateSubscription(subscription.getId(), status, periodStart, periodEnd,
-                    subscription.getCancelAtPeriodEnd(), planId);
-        }
-    }
+			Long planId = resolvePlanId(item.getPrice());
 
-    private Long resolvePlanId(Price price) {
-        if (price == null || price.getId() == null) return null;
+			subscriptionService.updateSubscription(subscription.getId(), status, periodStart, periodEnd,
+					subscription.getCancelAtPeriodEnd(), planId);
+		}
+	}
 
-        return planRepository.findByStripePriceId(price.getId()).map(Plan::getId).orElse(null);
-    }
+	private Long resolvePlanId(final Price price) {
+		if (price == null || price.getId() == null) {
+			return null;
+		}
 
-    /**
-     * when subscription ends, revoke the access
-     */
-    private void handleCustomerSubscriptionDeleted(StripeObject stripeObject) {
-        if (stripeObject instanceof Subscription subscription) {
-            subscriptionService.cancelSubscription(subscription.getId());
-        }
-    }
+		return planRepository.findByStripePriceId(price.getId()).map(Plan::getId).orElse(null);
+	}
 
-    /**
-     * When invoice is paid
-     */
-    private void handleInvoicePaid(StripeObject stripeObject) {
-        if (stripeObject instanceof Invoice invoice) {
-            String subscriptionId = extractSubscriptionId(invoice);
-            if (subscriptionId == null) return;
+	/**
+	 * when subscription ends, revoke the access
+	 */
+	private void handleCustomerSubscriptionDeleted(final StripeObject stripeObject) {
+		if (stripeObject instanceof Subscription subscription) {
+			subscriptionService.cancelSubscription(subscription.getId());
+		}
+	}
 
-            try {
-                Subscription subscription = stripeClient.v1().subscriptions()
-                                                        .retrieve(subscriptionId); //sdk calling the Stripe server
-                if (subscription.getItems().getData().isEmpty()) {
-                    log.warn("handleInvoicePaid::No subscription items found for {}", subscription.getId());
-                    return;
-                }
+	/**
+	 * When invoice is paid
+	 */
+	private void handleInvoicePaid(final StripeObject stripeObject) {
+		if (stripeObject instanceof Invoice invoice) {
+			String subscriptionId = extractSubscriptionId(invoice);
+			if (subscriptionId == null) {
+				return;
+			}
 
-                SubscriptionItem item = subscription.getItems().getData().getFirst();
+			try {
+				// sdk calling the Stripe server
+				Subscription subscription = stripeClient.v1().subscriptions().retrieve(subscriptionId);
+				if (subscription.getItems().getData().isEmpty()) {
+					log.warn("handleInvoicePaid::No subscription items found for {}", subscription.getId());
+					return;
+				}
 
-                Instant periodStart = CommonUtility.toInstant(item.getCurrentPeriodStart());
-                Instant periodEnd = CommonUtility.toInstant(item.getCurrentPeriodEnd());
+				SubscriptionItem item = subscription.getItems().getData().getFirst();
 
-                subscriptionService.renewSubscriptionPeriod(subscriptionId, periodStart, periodEnd);
-            } catch (StripeException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
+				Instant periodStart = CommonUtility.toInstant(item.getCurrentPeriodStart());
+				Instant periodEnd = CommonUtility.toInstant(item.getCurrentPeriodEnd());
 
-    private String extractSubscriptionId(Invoice invoice) {
-        var parent = invoice.getParent();
-        if (parent == null) return null;
+				subscriptionService.renewSubscriptionPeriod(subscriptionId, periodStart, periodEnd);
+			} catch (StripeException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
 
-        var subDetails = parent.getSubscriptionDetails();
-        if (subDetails == null) return null;
+	private String extractSubscriptionId(final Invoice invoice) {
+		var parent = invoice.getParent();
+		if (parent == null) {
+			return null;
+		}
 
-        return subDetails.getSubscription();
-    }
+		var subDetails = parent.getSubscriptionDetails();
+		if (subDetails == null) {
+			return null;
+		}
 
-    /**
-     * when invoice is not paid, mark as PAST_DUE
-     */
-    private void handleInvoicePaymentFailed(StripeObject stripeObject) {
-        if (stripeObject instanceof Invoice invoice) {
-            String subscriptionId = extractSubscriptionId(invoice);
-            if (subscriptionId == null) return;
+		return subDetails.getSubscription();
+	}
 
-            subscriptionService.markSubscriptionPastDue(subscriptionId);
-        }
-    }
+	/**
+	 * when invoice is not paid, mark as PAST_DUE
+	 */
+	private void handleInvoicePaymentFailed(final StripeObject stripeObject) {
+		if (stripeObject instanceof Invoice invoice) {
+			String subscriptionId = extractSubscriptionId(invoice);
+			if (subscriptionId == null) {
+				return;
+			}
+
+			subscriptionService.markSubscriptionPastDue(subscriptionId);
+		}
+	}
 
 }

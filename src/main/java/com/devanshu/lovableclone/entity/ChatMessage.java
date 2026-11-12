@@ -49,7 +49,7 @@ public class ChatMessage extends CommonModel {
 	/**
 	 * Null unless {@link MessageRole} is USER
 	 */
-	@Column(name = "content")
+	@Column(name = "content", columnDefinition = "TEXT")
 	private String content;
 
 	@Column(name = "token_used", nullable = false)

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -23,6 +25,10 @@ public class CodeGenerationTools {
 	private final Long projectId;
 	private final Set<String> existingFiles;
 
+	private static final int MAX_READ_CALLS = 5;
+	private final AtomicInteger calls = new AtomicInteger();
+	private final Set<String> alreadyRead = ConcurrentHashMap.newKeySet();
+
 	@Tool(name = "read_files", description = """
 			Reads the content of EXISTING project files.
 
@@ -34,6 +40,11 @@ public class CodeGenerationTools {
 			""")
 	public List<ReadFileResponse> readFiles(
 			@ToolParam(description = "List of relative paths (e.g. ['src/App.tsx'])") final List<String> paths) {
+
+		if (calls.incrementAndGet() > MAX_READ_CALLS) {
+			return List.of(new ReadFileResponse("*", ReadFileResponse.Status.INVALID_REQUEST, null,
+					"Read limit reached. Proceed with the files you already have."));
+		}
 
 		List<ReadFileResponse> result = new ArrayList<>();
 		Set<String> uniquePaths = new LinkedHashSet<>(paths);
@@ -55,9 +66,15 @@ public class CodeGenerationTools {
 						"This file is not present in FILE_TREE. Generate it directly and never request it again."));
 				continue;
 			}
+			if (alreadyRead.contains(cleanPath)) {
+				result.add(new ReadFileResponse(cleanPath, ReadFileResponse.Status.FILE_ALREADY_READ, null,
+						"Already provided earlier in this response. Reuse it."));
+				continue;
+			}
 
 			try {
 				String content = projectFileService.getFile(projectId, cleanPath).content();
+				alreadyRead.add(cleanPath);
 				result.add(new ReadFileResponse(cleanPath, ReadFileResponse.Status.FILE_FOUND, content, null));
 			} catch (NotFoundException e) {
 				result.add(new ReadFileResponse(cleanPath, ReadFileResponse.Status.FILE_NOT_FOUND, null,

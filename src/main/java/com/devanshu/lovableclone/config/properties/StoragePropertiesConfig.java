@@ -1,16 +1,22 @@
 package com.devanshu.lovableclone.config.properties;
 
-import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
 
 @Data
 @Component
 @ConfigurationProperties(prefix = "minio")
 public class StoragePropertiesConfig {
 
-    private String url;
-    private String accessKey;
-    private String secretKey;
-    private String projectBucket;
+	@NotBlank
+	private String url;
+	@NotBlank
+	private String accessKey;
+	@NotBlank
+	private String secretKey;
+	@NotBlank
+	private String projectBucket;
 }

@@ -1,8 +1,5 @@
 package com.devanshu.lovableclone.security;
 
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -15,31 +12,35 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+
 @Configuration
 @RequiredArgsConstructor
 @EnableMethodSecurity
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SecurityConfig {
 
-    JwtAuthenticationFilter jwtAuthenticationFilter;
+	JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) {
-        httpSecurity
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(Customizer.withDefaults())
-                .sessionManagement(sessionConfig -> sessionConfig.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authConfig -> authConfig.requestMatchers("/auth/signup", "/auth/login", "/webhook/**")
-                                                               .permitAll()
-                                                               .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+	@Bean
+	SecurityFilterChain securityFilterChain(final HttpSecurity httpSecurity) {
+		httpSecurity.csrf(AbstractHttpConfigurer::disable).cors(Customizer.withDefaults())
+				.sessionManagement(
+						sessionConfig -> sessionConfig.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.authorizeHttpRequests(authConfig -> authConfig
+						.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**", "/api-docs.yaml")
+						.permitAll().requestMatchers("/auth/signup", "/auth/login", "/webhook/**").permitAll()
+						.anyRequest().authenticated())
+				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return httpSecurity.build();
-    }
+		return httpSecurity.build();
+	}
 
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 
 }

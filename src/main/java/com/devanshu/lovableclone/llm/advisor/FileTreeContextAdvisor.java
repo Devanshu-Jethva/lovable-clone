@@ -15,19 +15,12 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Component;
 
-import com.devanshu.lovableclone.dto.projects.file.ProjectFileListDTO;
-import com.devanshu.lovableclone.service.ProjectFileService;
-
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class FileTreeContextAdvisor implements StreamAdvisor {
-
-	private final ProjectFileService projectFileService;
 
 	@Override
 	public Flux<ChatClientResponse> adviseStream(final ChatClientRequest request,
@@ -44,26 +37,40 @@ public class FileTreeContextAdvisor implements StreamAdvisor {
 
 		List<Message> incomingMessages = request.prompt().getInstructions();
 
-		Message systemMessage = incomingMessages.stream().filter(m -> m.getMessageType() == MessageType.SYSTEM)
-				.findFirst().orElse(null);
+		String tree = "";
 
-		List<Message> userMessages = incomingMessages.stream().filter(m -> m.getMessageType() != MessageType.SYSTEM)
-				.toList();
+		Object object = request.context().get("filePaths");
+
+		if (!(object instanceof List<?> filePaths)) {
+			throw new IllegalStateException("filePaths missing from advisor context");
+		}
+
+		tree = filePaths.stream().filter(String.class::isInstance).map(String.class::cast).sorted()
+				.collect(Collectors.joining("\n"));
+
+		String fileTreeContext = """
+				---- FILE_TREE ----
+				%s
+				""".formatted(tree);
 
 		List<Message> allMessages = new ArrayList<>();
 
-		// Add original system message
-		if (systemMessage != null) {
-			allMessages.add(systemMessage);
+		boolean systemMessageUpdated = false;
+
+		for (Message message : incomingMessages) {
+			if (message.getMessageType() == MessageType.SYSTEM && !systemMessageUpdated) {
+
+				SystemMessage originalSystemMessage = (SystemMessage) message;
+
+				allMessages.add(new SystemMessage(originalSystemMessage.getText() + fileTreeContext));
+
+				systemMessageUpdated = true;
+
+			} else {
+				allMessages.add(message);
+			}
 		}
 
-		List<ProjectFileListDTO> fileTree = projectFileService.getFiles(projectId).files();
-
-		String tree = fileTree.stream().map(ProjectFileListDTO::path).sorted().collect(Collectors.joining("\n"));
-		String fileTreeContext = "\n\n ---- FILE_TREE ----\n" + tree;
-		allMessages.add(new SystemMessage(fileTreeContext));
-
-		allMessages.addAll(userMessages);
 		return request.mutate().prompt(new Prompt(allMessages, request.prompt().getOptions())).build();
 	}
 

@@ -19,14 +19,31 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+#  ai:
+#    openai:
+#      api-key: ${OPEN_ROUTER_API_KEY}
+#      base-url: https://openrouter.ai/api/v1
+#      chat:
+##        model: openrouter/free
+#        model: google/gemma-4-31b-it:free
+#        temperature: 0.0
   ai:
-    openai:
-      api-key: ${OPEN_ROUTER_API_KEY}
-      base-url: https://openrouter.ai/api/v1
-      chat:
-#        model: openrouter/free
-        model: google/gemma-4-31b-it:free
-        temperature: 0.0
+    model:
+      chat: google-genai
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+        chat:
+          model: gemini-3.8-flash
+          temperature: 0.0
+          thinking-level: LOW
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
 
 logging:
   config: classpath:log4j2-spring.yml
@@ -47,7 +64,7 @@ stripe:
   api:
     secret: ${STRIPE_API_SECRET}
   webhook:
-    secret: ${STRIPE_WEBHOOK_SECRET}
+    secret: ${STRIPE_WEBHOOK_SINGING_SECRET}
 
 panel-url:
   admin: http://localhost:8080

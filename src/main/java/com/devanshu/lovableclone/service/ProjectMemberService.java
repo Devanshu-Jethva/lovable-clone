@@ -17,7 +17,7 @@ public interface ProjectMemberService {
 
     ProjectMemberDTO updateProjectMemberRole(Long projectId, Long projectMemberId, String projectRole);
 
-    void deleteProjectMember(Long projectId, Long projectMemberId);
+    void removeProjectMember(Long projectId, Long projectMemberId);
 
     void acceptRejectInviteProjectMember(Long projectId, String status);
 }

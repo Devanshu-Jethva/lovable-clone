@@ -29,7 +29,7 @@ public class UsageServiceImpl implements UsageService {
 	private final UsageLogMapper usageLogMapper;
 
 	@Override
-	public void recordTokenUsage(final Long userId, final int actualTokens) {
+	public void recordTokenUsage(final Long userId, final Integer actualTokens) {
 		LocalDate today = LocalDate.now();
 
 		UsageLog todayLog = usageLogRepository.findByUsersIdAndDate(userId, today)

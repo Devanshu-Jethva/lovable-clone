@@ -33,6 +33,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	JwtUtil jwtUtil;
 	ObjectMapper objectMapper;
+//	Not used right now, can be used if we want to pass the exception occurred in security filter chain to servlet context
+//	HandlerExceptionResolver handlerExceptionResolver; 
 
 	/**
 	 * This tells Spring to execute your JWT filter for the async dispatch as well.
@@ -65,20 +67,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 				log.debug("JWT authentication set for user: {}", principal.username());
 			}
 		} catch (ExpiredJwtException ex) {
-			log.warn("Expired JWT token attempt on {}", request.getRequestURI());
+			log.error("Expired JWT token attempt on {}", request.getRequestURI());
 			sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "EXPIRED_TOKEN", "JWT token has expired");
 			return;
 		} catch (SignatureException ex) {
-			log.warn("Invalid JWT signature on {}", request.getRequestURI());
+			log.error("Invalid JWT signature on {}", request.getRequestURI());
 			sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "INVALID_SIGNATURE",
 					"JWT signature verification failed");
 			return;
 		} catch (MalformedJwtException ex) {
-			log.warn("Malformed JWT token on {}", request.getRequestURI());
+			log.error("Malformed JWT token on {}", request.getRequestURI());
 			sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "MALFORMED_TOKEN", "JWT token format is invalid");
 			return;
 		} catch (JwtException ex) {
-			log.warn("JWT validation failed on {}: {}", request.getRequestURI(), ex.getMessage());
+			log.error("JWT validation failed on {}: {}", request.getRequestURI(), ex.getMessage());
 			sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "Invalid JWT token");
 			return;
 		}

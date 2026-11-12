@@ -50,9 +50,10 @@ public class ProjectFileServiceImpl implements ProjectFileService {
 
 	@Override
 	public ProjectFileDetailDTO getFile(final Long projectId, final String path) {
-		String objectName = projectId + "/" + path;
-		try (InputStream is = minioClient.getObject(
-				GetObjectArgs.builder().bucket(ApplicationConstants.MAIN_BUCKET).object(objectName).build())) {
+		String cleanPath = path.startsWith(ApplicationConstants.FILE_SEPARATOR) ? path.substring(1) : path;
+		String objectName = projectId + ApplicationConstants.FILE_SEPARATOR + cleanPath;
+		try (InputStream is = minioClient.getObject(GetObjectArgs.builder()
+				.bucket(storagePropertiesConfig.getProjectBucket()).object(objectName).build())) {
 
 			String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
 			return new ProjectFileDetailDTO(path, content);
@@ -65,22 +66,27 @@ public class ProjectFileServiceImpl implements ProjectFileService {
 	@Override
 	public void saveFile(final Long projectId, final String filePath, final String fileContent) {
 		log.info("Saving file: {}", filePath);
-		Projects projects = projectsService.getProject(projectId);
+		String cleanPath = validatePath(filePath);
 
-		String cleanPath = filePath.startsWith("/") ? filePath.substring(1) : filePath;
-		String objectKey = projectId + "/" + cleanPath;
+		Projects projects = projectsService.getProject(projectId);
+		String objectKey = projectId + ApplicationConstants.FILE_SEPARATOR + cleanPath;
 
 		try {
 			byte[] contentBytes = fileContent.getBytes(StandardCharsets.UTF_8);
-			InputStream inputStream = new ByteArrayInputStream(contentBytes);
-			// saving the file content
-			minioClient.putObject(PutObjectArgs.builder().bucket(storagePropertiesConfig.getProjectBucket())
-					.object(objectKey).stream(inputStream, (long) contentBytes.length, -1L)
-					.contentType(determineContentType(filePath)).build());
+			try (InputStream inputStream = new ByteArrayInputStream(contentBytes)) {
 
-			// Saving the metaData
-			ProjectFile file = projectFileRepository.findByProjects_IdAndPath(projectId, cleanPath).orElseGet(
-					() -> ProjectFile.builder().projects(projects).path(cleanPath).minioObjectKey(objectKey).build());
+				// Save file content in MinIO
+				minioClient.putObject(PutObjectArgs.builder().bucket(storagePropertiesConfig.getProjectBucket())
+						.object(objectKey).stream(inputStream, (long) contentBytes.length, -1L)
+						.contentType(determineContentType(cleanPath)).build());
+			}
+
+			// Save file metadata in PostgreSQL
+			ProjectFile file = projectFileRepository.findByProjects_IdAndPath(projectId, cleanPath)
+					.orElseGet(() -> ProjectFile.builder().projects(projects).path(cleanPath).build());
+
+			// Maintain the MinIO object key for both insert and update
+			file.setMinioObjectKey(objectKey);
 
 			projectFileRepository.save(file);
 			log.info("Saved file: {}", objectKey);
@@ -88,6 +94,22 @@ public class ProjectFileServiceImpl implements ProjectFileService {
 			log.error("Failed to save file {}/{}", projectId, cleanPath, e);
 			throw new RuntimeException("File save failed", e);
 		}
+	}
+
+	private String validatePath(final String filePath) {
+		if (filePath == null || filePath.isBlank()) {
+			throw new RuntimeException("Empty file path");
+		}
+		String p = filePath.replace('\\', '/');
+		while (p.startsWith("/")) {
+			p = p.substring(1);
+		}
+		for (String seg : p.split("/", -1)) {
+			if (seg.isEmpty() || seg.equals(".") || seg.equals("..")) {
+				throw new RuntimeException("Invalid file path: " + filePath);
+			}
+		}
+		return p;
 	}
 
 	private String determineContentType(final String path) {

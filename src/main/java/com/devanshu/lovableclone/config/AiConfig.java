@@ -1,15 +1,13 @@
 package com.devanshu.lovableclone.config;
 
-import java.time.Duration;
-
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
-import org.springframework.ai.openai.http.okhttp.OpenAiHttpClientBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.openai.core.Timeout;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Configuration
 public class AiConfig {
 
@@ -18,9 +16,4 @@ public class AiConfig {
 		return chatClientBuilder.defaultAdvisors(new SimpleLoggerAdvisor()).build();
 	}
 
-	@Bean
-	OpenAiHttpClientBuilderCustomizer openAiHttpClientBuilderCustomizer() {
-		return builder -> builder.timeout(Timeout.builder().connect(Duration.ofSeconds(500))
-				.read(Duration.ofSeconds(500)).write(Duration.ofSeconds(500)).request(Duration.ofSeconds(500)).build());
-	}
 }
