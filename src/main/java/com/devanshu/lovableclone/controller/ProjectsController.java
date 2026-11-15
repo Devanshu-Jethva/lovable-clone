@@ -15,9 +15,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.devanshu.lovableclone.dto.ApiResponse;
+import com.devanshu.lovableclone.dto.deploy.DeployResponseDTO;
 import com.devanshu.lovableclone.dto.projects.ProjectDetailDTO;
 import com.devanshu.lovableclone.dto.projects.ProjectListDTO;
 import com.devanshu.lovableclone.dto.projects.ProjectRequestDTO;
+import com.devanshu.lovableclone.service.DeploymentService;
 import com.devanshu.lovableclone.service.ProjectsService;
 
 import jakarta.validation.Valid;
@@ -29,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class ProjectsController {
 
 	private final ProjectsService projectsService;
+	private final DeploymentService deploymentService;
 
 	@PostMapping
 	public ResponseEntity<Object> createProject(@Valid @RequestBody final ProjectRequestDTO projectRequestDTO) {
@@ -65,5 +68,11 @@ public class ProjectsController {
 	public ResponseEntity<Object> deleteProjectById(@PathVariable final Long id) {
 		projectsService.deleteProject(id);
 		return ResponseEntity.ok(ApiResponse.builder().message("Project deleted successfully").build());
+	}
+
+	@PostMapping("/{id}/deploy")
+	public ResponseEntity<Object> deployProject(@PathVariable final Long id) {
+		return ResponseEntity.ok(ApiResponse.<DeployResponseDTO>builder().data(deploymentService.deploy(id))
+				.message("Project deployed successfully").build());
 	}
 }

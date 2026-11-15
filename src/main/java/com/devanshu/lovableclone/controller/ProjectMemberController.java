@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.devanshu.lovableclone.annotation.EnumValidator;
+import com.devanshu.lovableclone.constant.ProjectRole;
 import com.devanshu.lovableclone.dto.ApiResponse;
 import com.devanshu.lovableclone.dto.projects.member.InviteProjectMemberRequestDTO;
 import com.devanshu.lovableclone.dto.projects.member.ProjectMemberDTO;
@@ -54,7 +56,8 @@ public class ProjectMemberController {
 	@PatchMapping("/{projectMemberId}")
 	@PreAuthorize("@securityExpression.canManageProjectMembers(#projectId)")
 	public ResponseEntity<Object> updateProjectMemberRole(@PathVariable final Long projectId,
-			@PathVariable final Long projectMemberId, @RequestParam final String projectRole) {
+			@PathVariable final Long projectMemberId,
+			@EnumValidator(enumClass = ProjectRole.class, message = "Invalid project role.") @RequestParam final String projectRole) {
 		ProjectMemberDTO projectMemberDTO = projectMemberService.updateProjectMemberRole(projectId, projectMemberId,
 				projectRole);
 		return ResponseEntity.ok(ApiResponse.<ProjectMemberDTO>builder().data(projectMemberDTO)

@@ -86,10 +86,10 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
 	@Override
 	public ProjectMemberDTO updateProjectMemberRole(final Long projectId, final Long projectMemberId,
 			final String projectRole) {
-		Users users = new Users(); // TODO: user from security context
+		JwtUserPrincipal jwtUserPrincipal = helperService.checkForUserLogin();
 		Projects projects = getProject(projectId);
 		ProjectMember projectOwner = getProjectOwner(projects);
-		if (!Objects.equals(projectOwner.getUsers().getId(), users.getId())) {
+		if (!Objects.equals(projectOwner.getUsers().getId(), jwtUserPrincipal.id())) {
 			throw new PermissionException("User is not the owner of the project");
 		}
 		ProjectMember projectMember = projectMemberRepository.findById(new ProjectMemberId(projectMemberId, projectId))

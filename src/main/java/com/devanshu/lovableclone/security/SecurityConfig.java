@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import jakarta.servlet.DispatcherType;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -29,7 +30,8 @@ public class SecurityConfig {
 		httpSecurity.csrf(AbstractHttpConfigurer::disable).cors(Customizer.withDefaults())
 				.sessionManagement(
 						sessionConfig -> sessionConfig.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(authConfig -> authConfig
+				.authorizeHttpRequests(authConfig -> authConfig.dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
+						.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
 						.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs/**", "/api-docs.yaml")
 						.permitAll().requestMatchers("/auth/signup", "/auth/login", "/webhook/**").permitAll()
 						.anyRequest().authenticated())
