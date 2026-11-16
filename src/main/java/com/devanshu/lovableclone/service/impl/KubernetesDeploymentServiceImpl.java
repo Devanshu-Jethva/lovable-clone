@@ -3,6 +3,7 @@ package com.devanshu.lovableclone.service.impl;
 import java.io.ByteArrayOutputStream;
 import java.util.concurrent.TimeUnit;
 
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.devanshu.lovableclone.constant.ApplicationConstants;
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 public class KubernetesDeploymentServiceImpl implements DeploymentService {
 
 	private final KubernetesClient client;
+	private final StringRedisTemplate redisTemplate;
 
 	@Override
 	public DeployResponseDTO deploy(final Long projectId) {
@@ -31,6 +33,7 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
 		Pod existingPod = findActivePod(projectId);
 
 		if (existingPod != null) {
+			registerRoute(domain, existingPod);
 			return new DeployResponseDTO("http://" + domain + ":" + ApplicationConstants.REVERSE_PROXY_PORT);
 		}
 
@@ -69,6 +72,8 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
 			String startCmd = "nohup npm run dev -- --host 0.0.0.0 --port 5173 " + "</dev/null > /app/dev.log 2>&1 &";
 			execBackgroundCommand(podName, ApplicationConstants.RUNNER_CONTAINER, "sh", "-c", startCmd);
 
+			registerRoute(domain, pod);
+
 			log.info("Deployment successful: http://{}:{}", domain, ApplicationConstants.REVERSE_PROXY_PORT);
 			return new DeployResponseDTO("http://" + domain + ":" + ApplicationConstants.REVERSE_PROXY_PORT);
 
@@ -80,12 +85,10 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
 	}
 
 	private void execCommand(final String podName, final String container, final String... command) {
-
 		execCommand(podName, container, true, 10, TimeUnit.MINUTES, command);
 	}
 
 	private void execBackgroundCommand(final String podName, final String container, final String... command) {
-
 		execCommand(podName, container, false, 0, TimeUnit.SECONDS, command);
 	}
 
@@ -126,6 +129,17 @@ public class KubernetesDeploymentServiceImpl implements DeploymentService {
 			log.error("Exec failed in {}:{}", podName, container, e);
 			throw new DeploymentException("Pod Execution Failed", e);
 		}
+	}
+
+	private void registerRoute(final String domain, final Pod pod) {
+		String podIp = pod.getStatus().getPodIP();
+		if (podIp == null) {
+			throw new RuntimeException("Pod is running but has no IP!");
+		}
+
+		// e.g.
+		// route:project-1.app.domain.com -> 10.47.85.56:5173
+		redisTemplate.opsForValue().set("route:" + domain, podIp + ":5173", 6, TimeUnit.HOURS);
 	}
 
 	Pod findActivePod(final Long projectId) {
