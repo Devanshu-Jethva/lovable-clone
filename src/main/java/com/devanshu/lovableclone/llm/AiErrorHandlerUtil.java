@@ -1,4 +1,4 @@
-package com.devanshu.lovableclone.exceptions;
+package com.devanshu.lovableclone.llm;
 
 import java.io.IOException;
 import java.net.ConnectException;

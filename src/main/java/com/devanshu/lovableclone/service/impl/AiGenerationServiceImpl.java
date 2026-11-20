@@ -22,7 +22,7 @@ import com.devanshu.lovableclone.dto.chat.StreamResponseDTO;
 import com.devanshu.lovableclone.dto.projects.file.ProjectFileListDTO;
 import com.devanshu.lovableclone.entity.ChatEvent;
 import com.devanshu.lovableclone.entity.ChatSession;
-import com.devanshu.lovableclone.exceptions.AiErrorHandlerUtil;
+import com.devanshu.lovableclone.llm.AiErrorHandlerUtil;
 import com.devanshu.lovableclone.llm.advisor.FileTreeContextAdvisor;
 import com.devanshu.lovableclone.llm.tool.CodeGenerationTools;
 import com.devanshu.lovableclone.security.JwtUserPrincipal;
